@@ -20,4 +20,27 @@ public class JwtUtils {
                 .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()), SignatureAlgorithm.HS256)
                 .compact();
     }
+
+    // Thêm các phương thức này vào class JwtUtils của bạn
+    public String getUsernameFromJwtToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
+    public boolean validateJwtToken(String authToken) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
+                    .build()
+                    .parseClaimsJws(authToken);
+            return true;
+        } catch (Exception e) {
+            // Có thể log lỗi ở đây: expired, invalid, v.v.
+        }
+        return false;
+    }
 }

@@ -1,14 +1,19 @@
 package com.example.doantotnghiep.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.*;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -18,20 +23,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. Tắt CSRF
+                // 1. PHẢI CÓ: Kích hoạt CORS để nó nhận diện WebConfig của bạn
+                .cors(org.springframework.security.config.Customizer.withDefaults())
+
+                // 2. Tắt CSRF (đúng rồi)
                 .csrf(csrf -> csrf.disable())
 
-                // 2. Cấu hình phân quyền
+                // 3. Cấu hình phân quyền
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // Cho phép tất cả truy cập API đăng ký/đăng nhập
-                        .anyRequest().authenticated()               // Các API khác (Task, Project...) bắt buộc phải đăng nhập
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/images/**").permitAll()
+                        .anyRequest().authenticated()
                 )
 
-                // 3. Cấu hình Session là Stateless (vì mình dùng JWT, không dùng Session/Cookie)
+                // 4. Stateless (đúng rồi)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
 
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

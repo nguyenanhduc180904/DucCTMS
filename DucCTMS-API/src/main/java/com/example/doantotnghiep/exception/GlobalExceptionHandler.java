@@ -12,6 +12,7 @@ public class GlobalExceptionHandler {
     // 1. Bắt các lỗi RuntimeException (lỗi chủ động throw trong Service)
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex) {
+        ex.printStackTrace();
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 ex.getMessage()
@@ -32,10 +33,26 @@ public class GlobalExceptionHandler {
     // 3. Bắt tất cả các lỗi còn lại (Lỗi hệ thống không mong muốn)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex) {
+        ex.printStackTrace();
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Đã có lỗi hệ thống xảy ra: " + ex.getMessage()
         );
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    // 4. Bắt các lỗi Validation (Khi dùng @Valid ở Controller)
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationExceptions(
+            org.springframework.web.bind.MethodArgumentNotValidException ex) {
+
+        // Lấy thông báo lỗi đầu tiên tìm thấy
+        String errorMessage = ex.getBindingResult().getFieldErrors().get(0).getDefaultMessage();
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                errorMessage
+        );
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
