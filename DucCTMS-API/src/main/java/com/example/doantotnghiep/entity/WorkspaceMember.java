@@ -7,6 +7,10 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "workspace_members")
 @Getter @Setter
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class WorkspaceMember {
 
     @EmbeddedId

@@ -6,8 +6,9 @@ import jakarta.persistence.*;
 import java.io.Serializable;
 
 @Embeddable
-@Getter
-@Setter
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class WorkspaceMemberId implements Serializable {
     private Long workspaceId;
     private Long userId;

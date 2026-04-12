@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useLocation, Outlet, useParams, Navigate } from 'react-router-dom';
 import {
     Layout,
     Menu,
@@ -27,37 +27,38 @@ import {
     HistoryOutlined,
     SettingOutlined,
 } from '@ant-design/icons';
-import type { Workspace } from '../types/workspace';
 import { useLogout } from '../hooks/useAuth';
+import { useWorkspaces } from '../hooks/useWorkspaces';
+import { useMyProfile } from '../hooks/useUser';
+import CreateWorkspaceModal from '../components/Workspace/CreateWorkspaceModal';
 
+const BASE_URL = "http://localhost:8080";
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
 const MainLayout = () => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const { logout } = useLogout();
     const [collapsed, setCollapsed] = useState(false);
-    const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-    const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
-
-    const navigate = useNavigate();
     const location = useLocation();
     const { token: { colorBgContainer, borderRadiusLG } } = theme.useToken();
 
-    // Giả lập lấy dữ liệu từ DB (Bảng workspaces JOIN workspace_members)
-    useEffect(() => {
-        const mockWorkspaces = [
-            { id: 1, name: 'Công ty Công Nghệ ABC', role: 'OWNER' },
-            { id: 2, name: 'Dự án Freelance', role: 'MEMBER' },
-            { id: 3, name: 'Đồ án Tốt nghiệp', role: 'ADMIN' },
-        ];
-        setWorkspaces(mockWorkspaces);
-        setActiveWorkspace(mockWorkspaces[0]); // Mặc định chọn cái đầu tiên
-    }, []);
+    const { data: userData } = useMyProfile();
+    const avatarSrc = userData?.avatarUrl?.startsWith('blob')
+        ? userData.avatarUrl
+        : userData?.avatarUrl
+            ? `${BASE_URL}${userData.avatarUrl}`
+            : undefined;
+    const { workspaceId } = useParams();
+    const navigate = useNavigate();
+    const { data: workspaces = [], isLoading } = useWorkspaces();
+
+    if (!isLoading && workspaces.length === 0) {
+        return <Navigate to="/no-workspace" replace />;
+    }
+    const activeWorkspace = workspaces.find(w => w.id === Number(workspaceId)) || workspaces[0];
 
     const handleWorkspaceChange = (id: number) => {
-        const selected = workspaces.find(w => w.id === id) || null;
-        setActiveWorkspace(selected);
-        // Điều hướng sang URL mới của workspace đó
         navigate(`/workspace/${id}/dashboard`);
     };
 
@@ -76,7 +77,7 @@ const MainLayout = () => {
                 key: 'add',
                 label: 'Tạo Workspace mới',
                 icon: <PlusOutlined />,
-                onClick: () => console.log("Mở Modal thêm Workspace"),
+                onClick: () => setIsModalOpen(true),
             },
         ]
     };
@@ -115,7 +116,7 @@ const MainLayout = () => {
     ];
 
     const userActionItems = [
-        { key: 'profile', label: 'Thông tin cá nhân', icon: <UserOutlined />, onClick: () => navigate('/userProfile') },
+        { key: 'profile', label: 'Thông tin cá nhân', icon: <UserOutlined />, onClick: () => navigate(`/workspace/${activeWorkspace?.id}/userProfile`) },
         { type: 'divider' as const },
         { key: 'logout', label: 'Đăng xuất', icon: <LogoutOutlined />, danger: true, onClick: logout },
     ];
@@ -218,11 +219,10 @@ const MainLayout = () => {
 
                         <Dropdown menu={{ items: userActionItems }} placement="bottomRight">
                             <Space style={{ cursor: 'pointer' }}>
-                                <Avatar src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" />
+                                <Avatar src={avatarSrc} icon={<UserOutlined />} />
                                 {!collapsed && (
                                     <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                                        <Text strong>Nguyễn Văn A</Text>
-                                        <Text type="secondary" style={{ fontSize: 11 }}>{activeWorkspace?.role}</Text>
+                                        <Text strong>{userData?.username || userData?.fullName}</Text>
                                     </div>
                                 )}
                             </Space>
@@ -234,6 +234,11 @@ const MainLayout = () => {
                     <Outlet />
                 </Content>
             </Layout>
+
+            <CreateWorkspaceModal
+                open={isModalOpen}
+                onCancel={() => setIsModalOpen(false)}
+            />
         </Layout>
     );
 };

@@ -7,7 +7,21 @@ import Dashboard from './components/Dashboard';
 import ProtectedRoute from './routes/ProtectedRoute';
 import Register from './components/Auth/Register';
 import UserProfile from './components/UserProfile';
+import { useWorkspaces } from './hooks/useWorkspaces';
+import NoWorkspace from './components/Workspace/NoWorkspace';
 
+// Component phụ để điều hướng tự động
+const RootRedirect = () => {
+  const { data: workspaces, isLoading } = useWorkspaces();
+
+  if (isLoading) return null;
+
+  if (workspaces && workspaces.length > 0) {
+    return <Navigate to={`/workspace/${workspaces[0].id}/dashboard`} replace />;
+  }
+
+  return <Navigate to="no-workspace" replace />;
+};
 function App() {
   return (
     <BrowserRouter>
@@ -23,7 +37,8 @@ function App() {
           </Route>
 
           {/* chú ý sau này phải gọi backend vào số 1 này */}
-          <Route path="/" element={<Navigate to="/workspace/1/dashboard" replace />} />
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="no-workspace" element={<NoWorkspace />} />
         </Route>
 
         <Route path="/login" element={<Login />} />
