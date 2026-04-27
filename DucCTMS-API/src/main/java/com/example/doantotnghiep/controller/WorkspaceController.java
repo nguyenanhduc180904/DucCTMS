@@ -30,4 +30,27 @@ public class WorkspaceController {
         Workspace newWorkspace = workspaceService.createWorkspace(dto);
         return new ResponseEntity<>(newWorkspace, HttpStatus.CREATED);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(
+            @PathVariable Long id,
+            @Valid @RequestBody WorkspaceRequestDTO request
+    ) {
+        try {
+            Workspace updated = workspaceService.updateWorkspace(id, request);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        try {
+            workspaceService.deleteWorkspace(id);
+            return ResponseEntity.ok("Xóa không gian làm việc thành công");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
 }

@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -76,5 +77,26 @@ public class WorkspaceService {
         memberRepository.save(member);
 
         return savedWorkspace;
+    }
+
+    @Transactional
+    public Workspace updateWorkspace(Long id, WorkspaceRequestDTO request) {
+        Workspace workspace = workspaceRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Workspace hoặc đã bị xóa"));
+
+        workspace.setName(request.getName());
+        workspace.setDescription(request.getDescription());
+
+        return workspaceRepository.save(workspace);
+    }
+
+    @Transactional
+    public void deleteWorkspace(Long id) {
+        Workspace workspace = workspaceRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new RuntimeException("Workspace không tồn tại hoặc đã bị xóa trước đó"));
+
+        workspace.setDeletedAt(OffsetDateTime.now());
+
+        workspaceRepository.save(workspace);
     }
 }

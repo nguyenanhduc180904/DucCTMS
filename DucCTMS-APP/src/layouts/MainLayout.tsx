@@ -11,6 +11,7 @@ import {
     Typography,
     theme,
     Divider,
+    Modal,
 } from 'antd';
 import {
     MenuFoldOutlined,
@@ -26,11 +27,13 @@ import {
     CheckSquareOutlined,
     HistoryOutlined,
     SettingOutlined,
+    EditOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons';
 import { useLogout } from '../hooks/useAuth';
-import { useWorkspaces } from '../hooks/useWorkspaces';
+import { useDeleteWorkspace, useWorkspaces } from '../hooks/useWorkspaces';
 import { useMyProfile } from '../hooks/useUser';
-import CreateWorkspaceModal from '../components/Workspace/CreateWorkspaceModal';
+import WorkspaceModal from '../components/Workspace/WorkspaceModal';
 
 const BASE_URL = "http://localhost:8080";
 const { Header, Sider, Content } = Layout;
@@ -38,6 +41,8 @@ const { Text } = Typography;
 
 const MainLayout = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingWorkspace, setEditingWorkspace] = useState<any>(null);
+
     const { logout } = useLogout();
     const [collapsed, setCollapsed] = useState(false);
     const location = useLocation();
@@ -62,12 +67,59 @@ const MainLayout = () => {
         navigate(`/workspace/${id}/dashboard`);
     };
 
+    const handleOpenCreate = () => {
+        setEditingWorkspace(null);
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (workspace: any) => {
+        setEditingWorkspace(workspace);
+        setIsModalOpen(true);
+    };
+
+    const { mutate: deleteWorkspace } = useDeleteWorkspace();
+
+    const handleDeleteWorkspace = (workspace: any) => {
+        Modal.confirm({
+            title: 'Xác nhận xóa Workspace',
+            content: `Bạn có chắc chắn muốn xóa "${workspace.name}"? Hành động này không thể hoàn tác.`,
+            okText: 'Xóa',
+            okType: 'danger',
+            cancelText: 'Hủy',
+            onOk: () => {
+                deleteWorkspace(workspace.id, {
+                    onSuccess: () => {
+                        if (Number(workspaceId) === workspace.id) {
+                            navigate('/');
+                        }
+                    }
+                });
+            },
+        });
+    };
+
     // Menu cho Dropdown Workspace
     const workspaceMenuItems = {
         items: [
             ...workspaces.map(w => ({
                 key: w.id,
-                label: w.name,
+                label: (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <span>{w.name}</span>
+                        {w.role !== 'MEMBER' && (
+                            <Space onClick={(e) => e.stopPropagation()}>
+                                <EditOutlined
+                                    style={{ color: '#1677ff', fontSize: '14px' }}
+                                    onClick={() => handleOpenEdit(w)}
+                                />
+                                <DeleteOutlined
+                                    style={{ color: '#ff4d4f', fontSize: '14px' }}
+                                    onClick={() => handleDeleteWorkspace(w)}
+                                />
+                            </Space>
+                        )}
+                    </div>
+                ),
                 icon: <TeamOutlined />,
                 onClick: () => handleWorkspaceChange(w.id),
                 disabled: w.id === activeWorkspace?.id
@@ -77,7 +129,7 @@ const MainLayout = () => {
                 key: 'add',
                 label: 'Tạo Workspace mới',
                 icon: <PlusOutlined />,
-                onClick: () => setIsModalOpen(true),
+                onClick: handleOpenCreate,
             },
         ]
     };
@@ -235,8 +287,9 @@ const MainLayout = () => {
                 </Content>
             </Layout>
 
-            <CreateWorkspaceModal
+            <WorkspaceModal
                 open={isModalOpen}
+                initialValues={editingWorkspace}
                 onCancel={() => setIsModalOpen(false)}
             />
         </Layout>

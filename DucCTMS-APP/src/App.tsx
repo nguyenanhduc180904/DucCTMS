@@ -36,7 +36,6 @@ function App() {
             <Route path="userProfile" element={<UserProfile />} />
           </Route>
 
-          {/* chú ý sau này phải gọi backend vào số 1 này */}
           <Route path="/" element={<RootRedirect />} />
           <Route path="no-workspace" element={<NoWorkspace />} />
         </Route>

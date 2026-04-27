@@ -3,7 +3,7 @@ import { PlusOutlined, LogoutOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useLogout } from '../../hooks/useAuth';
 import { useState } from 'react';
-import CreateWorkspaceModal from './CreateWorkspaceModal';
+import CreateWorkspaceModal from './WorkspaceModal';
 
 const NoWorkspace = () => {
     const navigate = useNavigate();
