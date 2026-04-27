@@ -1,0 +1,170 @@
+// --- DATABASE SCHEMA: PROJECT MANAGEMENT SYSTEM ---
+// Công cụ trực quan hóa: dbdiagram.io
+
+// 1. Nhóm Quản lý Người dùng (Authentication & Users)
+Table users {
+  id bigint [pk, increment, note: 'Khóa chính, tự động tăng']
+  username varchar(50) [not null, unique]
+  email varchar(100) [not null, unique]
+  password_hash varchar(255) [not null]
+  full_name varchar(255)
+  avatar_url varchar(255)
+  is_active boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp [note: 'Dùng cho Soft Delete']
+}
+
+// 2. Nhóm Không gian làm việc (Workspaces)
+Table workspaces {
+  id bigint [pk, increment]
+  name varchar(255) [not null]
+  description varchar(255)
+  owner_id bigint [note: 'Chủ sở hữu Workspace']
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+}
+
+Table workspace_members {
+  user_id bigint [pk]
+  workspace_id bigint [pk]
+  role varchar(255) [note: 'OWNER, ADMIN, MEMBER']
+  joined_at timestamp
+}
+
+// 3. Nhóm Dự án (Projects & Columns)
+Table projects {
+  id bigint [pk, increment]
+  workspace_id bigint
+  name varchar(255) [not null]
+  description varchar(255)
+  created_by bigint
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+}
+
+Table project_members {
+  project_id bigint [pk]
+  user_id bigint [pk]
+  role varchar(255) [note: 'MANAGER, MEMBER']
+  joined_at timestamp
+}
+
+Table columns {
+  id bigint [pk, increment, note: 'Các cột trong Kanban board (VD: To Do, Doing)']
+  project_id bigint
+  name varchar(255) [not null]
+  position integer [note: 'Thứ tự hiển thị của cột']
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+}
+
+// 4. Nhóm Nhiệm vụ (Tasks & Details)
+Table tasks {
+  id bigint [pk, increment]
+  column_id bigint
+  title varchar(255) [not null]
+  description varchar(255)
+  priority varchar(255) [note: 'LOW, MEDIUM, HIGH']
+  position integer [note: 'Thứ tự của task trong cột']
+  due_date timestamp
+  created_by bigint
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+}
+
+Table comments {
+  id bigint [pk, increment]
+  task_id bigint
+  user_id bigint
+  content varchar(255) [not null]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+}
+
+Table labels {
+  id bigint [pk, increment]
+  project_id bigint
+  name varchar(255)
+  color varchar(255)
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+}
+
+Table task_labels {
+  label_id bigint [pk]
+  task_id bigint [pk]
+}
+
+Table task_assignees {
+  task_id bigint [pk]
+  user_id bigint [pk]
+  assigned_at timestamp
+}
+
+// 5. Hệ thống bổ trợ (Logs & Notifications)
+Table activity_logs {
+  id bigint [pk, increment]
+  user_id bigint
+  project_id bigint
+  task_id bigint
+  action varchar(255) [note: 'Hành động thực hiện']
+  details jsonb [note: 'Dữ liệu chi tiết dạng JSON']
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+}
+
+Table notifications {
+  id bigint [pk, increment]
+  user_id bigint [note: 'Người nhận thông báo']
+  actor_id bigint [note: 'Người gây ra hành động']
+  content varchar(255)
+  type varchar(255)
+  entity_id bigint
+  entity_type varchar(255)
+  is_read boolean
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+}
+
+// --- ĐỊNH NGHĨA CÁC MỐI QUAN HỆ (RELATIONSHIPS) ---
+
+// Quan hệ Workspace
+Ref: workspaces.owner_id > users.id
+Ref: workspace_members.workspace_id > workspaces.id
+Ref: workspace_members.user_id > users.id
+
+// Quan hệ Project
+Ref: projects.workspace_id > workspaces.id
+Ref: projects.created_by > users.id
+Ref: project_members.project_id > projects.id
+Ref: project_members.user_id > users.id
+
+// Quan hệ Column & Task
+Ref: columns.project_id > projects.id
+Ref: tasks.column_id > columns.id
+Ref: tasks.created_by > users.id
+
+// Quan hệ Task Details
+Ref: comments.task_id > tasks.id
+Ref: comments.user_id > users.id
+Ref: task_assignees.task_id > tasks.id
+Ref: task_assignees.user_id > users.id
+Ref: labels.project_id > projects.id
+Ref: task_labels.task_id > tasks.id
+Ref: task_labels.label_id > labels.id
+
+// Quan hệ Logs & Notifications
+Ref: activity_logs.user_id > users.id
+Ref: activity_logs.project_id > projects.id
+Ref: activity_logs.task_id > tasks.id
+Ref: notifications.user_id > users.id
+Ref: notifications.actor_id > users.id
