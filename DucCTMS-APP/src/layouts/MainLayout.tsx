@@ -146,14 +146,14 @@ const MainLayout = () => {
             label: 'Thành viên'
         },
         {
-            key: `/workspace/${activeWorkspace?.id}/my-tasks`,
-            icon: <CheckSquareOutlined />,
-            label: 'Việc của tôi'
-        },
-        {
             key: `/workspace/${activeWorkspace?.id}/projects`,
             icon: <ProjectOutlined />,
             label: 'Dự án (Boards)'
+        },
+        {
+            key: `/workspace/${activeWorkspace?.id}/my-tasks`,
+            icon: <CheckSquareOutlined />,
+            label: 'Việc của tôi'
         },
         ...(activeWorkspace?.role !== 'MEMBER' ? [{
             key: `/workspace/${activeWorkspace?.id}/settings`,

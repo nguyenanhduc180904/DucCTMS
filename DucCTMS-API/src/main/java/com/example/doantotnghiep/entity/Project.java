@@ -16,6 +16,9 @@ public class Project extends BaseEntity {
 
     private String description;
 
+    @Column(length = 20)
+    private String color;
+
     @ManyToOne
     @JoinColumn(name = "created_by")
     private User createdBy;

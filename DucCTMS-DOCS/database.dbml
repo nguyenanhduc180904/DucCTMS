@@ -39,6 +39,7 @@ Table projects {
   workspace_id bigint
   name varchar(255) [not null]
   description varchar(255)
+  color varchar(20)
   created_by bigint
   created_at timestamp
   updated_at timestamp
