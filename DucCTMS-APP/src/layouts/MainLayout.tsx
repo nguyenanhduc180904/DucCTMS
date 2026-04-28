@@ -141,6 +141,11 @@ const MainLayout = () => {
             label: 'Tổng quan'
         },
         {
+            key: `/workspace/${activeWorkspace?.id}/members`,
+            icon: <TeamOutlined />,
+            label: 'Thành viên'
+        },
+        {
             key: `/workspace/${activeWorkspace?.id}/my-tasks`,
             icon: <CheckSquareOutlined />,
             label: 'Việc của tôi'
@@ -155,11 +160,6 @@ const MainLayout = () => {
             icon: <SettingOutlined />,
             label: 'Cài đặt hệ thống'
         }] : []),
-        {
-            key: `/workspace/${activeWorkspace?.id}/members`,
-            icon: <TeamOutlined />,
-            label: 'Thành viên'
-        },
         {
             key: `/workspace/${activeWorkspace?.id}/activities`,
             icon: <HistoryOutlined />,
