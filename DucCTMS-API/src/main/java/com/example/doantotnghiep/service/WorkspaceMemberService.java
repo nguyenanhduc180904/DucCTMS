@@ -78,4 +78,18 @@ public class WorkspaceMemberService {
         memberRepository.deleteById(memberId);
     }
 
+    @Transactional
+    public void updateRole(Long workspaceId, Long userId, WorkspaceMember.Role newRole) {
+        WorkspaceMemberId memberId = new WorkspaceMemberId(workspaceId, userId);
+        WorkspaceMember member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thành viên trong hệ thống"));
+
+        if (member.getRole() == WorkspaceMember.Role.OWNER) {
+            throw new RuntimeException("Không thể thay đổi vai trò của Chủ sở hữu");
+        }
+
+        member.setRole(newRole);
+        memberRepository.save(member);
+    }
+
 }

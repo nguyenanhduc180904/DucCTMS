@@ -23,3 +23,8 @@ export const removeMember = async (workspaceId: number, userId: number) => {
     const response = await axiosInstance.delete(`/${workspaceId}/members/${userId}`);
     return response.data;
 };
+
+export const updateRole = async (workspaceId: number, userId: number, role: string) => {
+    const response = await axiosInstance.put(`/${workspaceId}/members/${userId}/role`, { role });
+    return response.data;
+};

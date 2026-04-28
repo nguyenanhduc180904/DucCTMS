@@ -3,7 +3,7 @@ import { Table, Tag, Space, Button, Input, Avatar, Card, Typography, Select, Row
 import { UserAddOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import dayjs from 'dayjs'; // Cài đặt: npm install dayjs
-import { useInviteMember, useMembers, useRemoveMember, type Member } from '../../hooks/useWorkspaceMember';
+import { useInviteMember, useMembers, useRemoveMember, useUpdateRole, type Member } from '../../hooks/useWorkspaceMember';
 import { useWorkspaces } from '../../hooks/useWorkspaces';
 import { useMyProfile } from '../../hooks/useUser';
 
@@ -18,8 +18,15 @@ const MembersPage: React.FC = () => {
     const { data: workspaces } = useWorkspaces();
     const { data: userData } = useMyProfile();
 
+    const [searchText, setSearchText] = useState('');
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('MEMBER');
+    const { mutate: updateRole, isPending: isUpdating } = useUpdateRole(workspaceId);
+
+    const filteredMembers = members?.filter(member =>
+        member.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
+        member.email.toLowerCase().includes(searchText.toLowerCase())
+    );
 
     const activeWorkspace = workspaces?.find(w => w.id === Number(workspaceId));
     const myRole = activeWorkspace?.role;
@@ -62,13 +69,30 @@ const MembersPage: React.FC = () => {
         },
         {
             title: 'Vai trò',
-            dataIndex: 'role',
             key: 'role',
-            render: (role: string) => {
-                let color = 'blue';
-                if (role === 'OWNER') color = 'gold';
-                if (role === 'ADMIN') color = 'magenta';
-                return <Tag color={color} style={{ fontWeight: 500 }}>{role}</Tag>;
+            render: (_: any, record: Member) => {
+                const isTargetOwner = record.role === 'OWNER';
+                const isMyself = record.userId === userData?.id;
+
+                if (isTargetOwner || isMyself || !canManage) {
+                    let color = 'blue';
+                    if (record.role === 'OWNER') color = 'gold';
+                    if (record.role === 'ADMIN') color = 'magenta';
+                    return <Tag color={color}>{record.role}</Tag>;
+                }
+
+                return (
+                    <Select
+                        defaultValue={record.role}
+                        size="small"
+                        style={{ width: 100 }}
+                        loading={isUpdating}
+                        onChange={(newRole) => updateRole({ userId: record.userId, role: newRole })}
+                    >
+                        <Option value="ADMIN">ADMIN</Option>
+                        <Option value="MEMBER">MEMBER</Option>
+                    </Select>
+                );
             },
         },
         {
@@ -90,7 +114,6 @@ const MembersPage: React.FC = () => {
                     <Space size="middle">
                         {canManage && !isTargetOwner && !isSearchingMyself ? (
                             <>
-                                <Button type="link" size="small">Đổi quyền</Button>
                                 <Tooltip title="Gỡ khỏi workspace">
                                     <Button
                                         type="text"
@@ -178,16 +201,32 @@ const MembersPage: React.FC = () => {
 
 
             {/* Bảng dữ liệu */}
-            <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: 8, overflow: 'hidden' }}>
+            <Card
+                styles={{ body: { padding: 0 } }}
+                style={{ borderRadius: 8, overflow: 'hidden' }}
+                title={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                        <span>Danh sách thành viên</span>
+                        {/* 3. Ô Input tìm kiếm */}
+                        <Input
+                            placeholder="Tìm kiếm tên hoặc email..."
+                            prefix={<SearchOutlined />}
+                            style={{ width: 300 }}
+                            allowClear
+                            onChange={(e) => setSearchText(e.target.value)}
+                        />
+                    </div>
+                }
+            >
                 {isLoading ? (
                     <div style={{ padding: 24 }}><Skeleton active /></div>
                 ) : (
                     <Table
                         columns={columns}
-                        dataSource={members}
+                        dataSource={filteredMembers}
                         rowKey="userId"
                         loading={isLoading}
-                        pagination={{ pageSize: 5 }}
+                        pagination={{ pageSize: 10 }}
                     />
                 )}
             </Card>

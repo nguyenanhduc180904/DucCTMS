@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getMembers, inviteMember, removeMember } from '../services/workspaceMemberService';
+import { getMembers, inviteMember, removeMember, updateRole } from '../services/workspaceMemberService';
 import message from 'antd/es/message';
 
 export interface Member {
@@ -51,6 +51,25 @@ export const useRemoveMember = (workspaceId: string | undefined) => {
         },
         onError: (error: any) => {
             message.error(error.response?.data || 'Không thể gỡ thành viên');
+        }
+    });
+};
+
+export const useUpdateRole = (workspaceId: string | undefined) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ userId, role }: { userId: number; role: string }) =>
+            updateRole(Number(workspaceId), userId, role),
+
+        onSuccess: () => {
+            message.success('Cập nhật vai trò thành công!');
+            queryClient.invalidateQueries({ queryKey: ['members', workspaceId] });
+        },
+
+        onError: (error: any) => {
+            const errorMsg = error.response?.data || 'Không thể cập nhật vai trò';
+            message.error(errorMsg);
         }
     });
 };

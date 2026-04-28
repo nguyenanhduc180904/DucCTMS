@@ -1,5 +1,6 @@
 package com.example.doantotnghiep.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.*;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
@@ -30,6 +31,11 @@ public class WorkspaceMember {
     private OffsetDateTime joinedAt = OffsetDateTime.now();
 
     public enum Role {
-        OWNER, ADMIN, MEMBER
+        OWNER, ADMIN, MEMBER;
+
+        @JsonCreator
+        public static Role fromString(String value) {
+            return Role.valueOf(value.toUpperCase());
+        }
     }
 }

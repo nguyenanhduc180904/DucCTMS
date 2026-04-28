@@ -1,5 +1,6 @@
 package com.example.doantotnghiep.controller;
 
+import com.example.doantotnghiep.dto.request.ChangeRoleRequest;
 import com.example.doantotnghiep.dto.request.InviteMemberRequest;
 import com.example.doantotnghiep.dto.response.WorkspaceMemberResponseDTO;
 import com.example.doantotnghiep.service.WorkspaceMemberService;
@@ -45,6 +46,20 @@ public class WorkspaceMemberController {
         try {
             memberService.removeMember(workspaceId, userId);
             return ResponseEntity.ok("Đã gỡ thành viên thành công");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{userId}/role")
+    public ResponseEntity<?> changeRole(
+            @PathVariable Long workspaceId,
+            @PathVariable Long userId,
+            @Valid @RequestBody ChangeRoleRequest request
+    ) {
+        try {
+            memberService.updateRole(workspaceId, userId, request.getRole());
+            return ResponseEntity.ok("Cập nhật vai trò thành công");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
