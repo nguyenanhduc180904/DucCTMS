@@ -11,6 +11,8 @@ import { useWorkspaces } from './hooks/useWorkspaces';
 import NoWorkspace from './components/Workspace/NoWorkspace';
 import MembersPage from './components/WorkspaceMember/MembersPage';
 import ProjectsPage from './components/Project';
+import ProjectDetail from './components/ProjectDetail';
+import ProjectMembersPage from './components/ProjectMembers/ProjectMembersPage';
 
 // Component phụ để điều hướng tự động
 const RootRedirect = () => {
@@ -35,6 +37,8 @@ function App() {
             <Route path="members" element={<MembersPage />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="projects" element={<ProjectsPage />} />
+            <Route path="projects/:projectId/members" element={<ProjectMembersPage />} />
+            <Route path="projects/:projectId" element={<ProjectDetail />} />
             <Route path="userProfile" element={<UserProfile />} />
           </Route>
 

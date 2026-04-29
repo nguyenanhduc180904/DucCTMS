@@ -8,6 +8,9 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "project_members")
 @Getter @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProjectMember {
 
     @EmbeddedId
