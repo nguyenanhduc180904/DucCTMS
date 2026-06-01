@@ -1,7 +1,6 @@
-// src/components/ProjectDetail/AddTaskModal.tsx
 import { Modal, Form, Input, Select, DatePicker } from 'antd';
 import { useParams } from 'react-router-dom';
-// import { useCreateTask } from '../../hooks/useTask'; // Bạn sẽ tạo hook này sau
+import { useCreateTask } from '../../hooks/useTask';
 
 interface AddTaskModalProps {
     open: boolean;
@@ -16,31 +15,24 @@ const AddTaskModal = ({ open, columnId, onCancel }: AddTaskModalProps) => {
     const [form] = Form.useForm();
     const { workspaceId, projectId } = useParams();
 
-    // Giả định hook bạn sẽ tạo:
-    // const { mutate: addTask, isPending } = useCreateTask(workspaceId, projectId);
+    const { mutate: addTask, isPending } = useCreateTask(workspaceId, projectId);
 
     const handleOk = () => {
         form.validateFields()
             .then((values) => {
-                // Format lại date nếu có
                 const formattedValues = {
                     ...values,
                     columnId: columnId,
                     dueDate: values.dueDate ? values.dueDate.format('YYYY-MM-DDTHH:mm:ssZ') : null,
                 };
 
-                console.log("Dữ liệu Task mới:", formattedValues);
-
-                // TODO: Gọi API tạo Task
-                // addTask(formattedValues, {
-                //     onSuccess: () => {
-                //         form.resetFields();
-                //         onCancel();
-                //     }
-                // });
-
-                // Tạm thời đóng luôn khi chưa có API
-                onCancel();
+                // 3. Mở logic gọi API
+                addTask(formattedValues, {
+                    onSuccess: () => {
+                        form.resetFields();
+                        onCancel();
+                    }
+                });
             })
             .catch((info) => {
                 console.log('Validate Failed:', info);
@@ -54,14 +46,14 @@ const AddTaskModal = ({ open, columnId, onCancel }: AddTaskModalProps) => {
 
     return (
         <Modal
+            confirmLoading={isPending}
             title="Thêm nhiệm vụ mới"
             open={open}
             onOk={handleOk}
             onCancel={handleCancel}
             okText="Tạo nhiệm vụ"
             cancelText="Hủy"
-            // confirmLoading={isPending}
-            width={600} // Form Task thường dài hơn nên để width rộng chút
+            width={600}
         >
             <Form form={form} layout="vertical" name="addTaskForm" initialValues={{ priority: 'MEDIUM' }}>
                 <Form.Item

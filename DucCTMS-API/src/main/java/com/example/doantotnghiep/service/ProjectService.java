@@ -133,7 +133,7 @@ public class ProjectService {
         List<Long> columnIds = columns.stream().map(ColumnEntity::getId).collect(Collectors.toList());
 
         // Lấy Task theo danh sách column ID
-        List<Task> allTasks = taskRepository.findByColumn_IdInOrderByPositionAsc(columnIds);
+        List<Task> allTasks = taskRepository.findByColumn_IdInAndDeletedAtIsNullOrderByPositionAsc(columnIds);
 
         // Group tasks theo thuộc tính id của đối tượng column
         Map<Long, List<Task>> tasksByColumnId = allTasks.stream()

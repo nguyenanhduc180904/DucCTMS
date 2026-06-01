@@ -23,6 +23,8 @@ import AddColumnModal from './AddColumnModal';
 import EditColumnModal from './EditColumnModal';
 import { useDeleteColumn } from '../../hooks/useColumn';
 import AddTaskModal from './AddTaskModal';
+import { useDeleteTask } from '../../hooks/useTask';
+import EditTaskModal from './EditTaskModal';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -71,10 +73,12 @@ const ProjectDetail = () => {
     const [editingColumn, setEditingColumn] = useState<Column | null>(null);
     const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState<boolean>(false);
     const [selectedColumnIdForNewTask, setSelectedColumnIdForNewTask] = useState<number | null>(null);
+    const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState<boolean>(false);
 
-    // 2. GỌI HOOK LẤY DỮ LIỆU API
+    // GỌI HOOK LẤY DỮ LIỆU API
     const { data: boardData, isLoading } = useProjectBoard(workspaceId, projectId);
     const { mutate: deleteColumn } = useDeleteColumn(workspaceId, projectId);
+    const { mutate: deleteTask } = useDeleteTask(workspaceId, projectId);
 
     // 3. ĐỒNG BỘ DỮ LIỆU TỪ SERVER VÀO LOCAL STATE
     useEffect(() => {
@@ -82,6 +86,41 @@ const ProjectDetail = () => {
             setColumns(boardData);
         }
     }, [boardData]);
+
+    //  Logic xóa task
+    const handleDeleteTask = (task: Task) => {
+        Modal.confirm({
+            title: 'Xác nhận xóa',
+            content: `Xóa nhiệm vụ "${task.title}"?`,
+            okText: 'Xóa',
+            okType: 'danger',
+            onOk: () => {
+                deleteTask(task.id, {
+                    onSuccess: () => setIsDrawerOpen(false) // Đóng drawer sau khi xóa
+                });
+            },
+        });
+    };
+
+    //  Menu thao tác Task
+    const taskMenu = {
+        items: [
+            {
+                key: 'edit',
+                icon: <EditOutlined style={{ color: '#1677ff' }} />,
+                label: 'Sửa nhiệm vụ',
+                onClick: () => setIsEditTaskModalOpen(true),
+            },
+            { type: 'divider' as const },
+            {
+                key: 'delete',
+                icon: <DeleteOutlined />,
+                label: 'Xóa nhiệm vụ',
+                danger: true,
+                onClick: () => handleDeleteTask(selectedTask!),
+            },
+        ]
+    };
 
     // Hàm mở Modal thêm Task
     const handleOpenAddTask = (columnId: number) => {
@@ -288,7 +327,11 @@ const ProjectDetail = () => {
                 width={500}
                 onClose={() => setIsDrawerOpen(false)}
                 open={isDrawerOpen}
-                extra={<Button type="text" icon={<MoreOutlined />} />}
+                extra={
+                    <Dropdown menu={taskMenu} trigger={['click']} placement="bottomRight">
+                        <Button type="text" icon={<MoreOutlined />} />
+                    </Dropdown>
+                }
             >
                 {selectedTask && (
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
@@ -348,6 +391,11 @@ const ProjectDetail = () => {
                     setIsAddTaskModalOpen(false);
                     setSelectedColumnIdForNewTask(null); // Reset state khi đóng
                 }}
+            />
+
+            <EditTaskModal
+                task={isEditTaskModalOpen ? selectedTask : null}
+                onCancel={() => setIsEditTaskModalOpen(false)}
             />
         </Layout>
     );
