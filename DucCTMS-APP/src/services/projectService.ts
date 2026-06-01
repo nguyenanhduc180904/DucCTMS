@@ -32,3 +32,12 @@ export const deleteProject = async (workspaceId: string, projectId: number) => {
         headers: { Authorization: `Bearer ${token}` }
     });
 };
+
+// chi tiết dự án
+export const getProjectBoard = async (workspaceId: string, projectId: string) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_URL}/${workspaceId}/projects/${projectId}/board`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};

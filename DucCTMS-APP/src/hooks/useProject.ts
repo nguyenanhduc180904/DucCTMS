@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createProject, deleteProject, getProjectsByWorkspace, updateProject } from '../services/projectService';
+import { createProject, deleteProject, getProjectBoard, getProjectsByWorkspace, updateProject } from '../services/projectService';
 import { message } from 'antd';
 
 export interface ProjectDTO {
@@ -60,5 +60,17 @@ export const useDeleteProject = (workspaceId: string | undefined) => {
             queryClient.invalidateQueries({ queryKey: ['projects', workspaceId] });
         },
         onError: (error: any) => message.error(error.response?.data || 'Không thể xóa dự án')
+    });
+};
+
+
+// chi tiết dự án
+export const useProjectBoard = (workspaceId: string | undefined, projectId: string | undefined) => {
+    return useQuery({
+        // Sử dụng mảng queryKey có chứa id để React Query tự động cache và phân biệt các project khác nhau
+        queryKey: ['projectBoard', workspaceId, projectId],
+        queryFn: () => getProjectBoard(workspaceId!, projectId!),
+        // Chỉ gọi API khi đã có đủ workspaceId và projectId từ URL
+        enabled: !!workspaceId && !!projectId,
     });
 };

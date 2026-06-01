@@ -2,19 +2,18 @@ package com.example.doantotnghiep.service;
 
 import com.example.doantotnghiep.dto.request.CreateProjectRequest;
 import com.example.doantotnghiep.dto.request.UpdateProjectRequest;
-import com.example.doantotnghiep.dto.response.ProjectResponseDTO;
+import com.example.doantotnghiep.dto.response.*;
 import com.example.doantotnghiep.entity.*;
-import com.example.doantotnghiep.repository.ProjectMemberRepository;
-import com.example.doantotnghiep.repository.ProjectRepository;
-import com.example.doantotnghiep.repository.UserRepository;
-import com.example.doantotnghiep.repository.WorkspaceRepository;
+import com.example.doantotnghiep.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +23,10 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final WorkspaceRepository workspaceRepository;
     private final ProjectMemberRepository projectMemberRepository;
+
+    private final ColumnRepository columnRepository;
+    private final TaskRepository taskRepository;
+    private final CommentRepository commentRepository;
 
     public List<ProjectResponseDTO> getMyProjectsInWorkspace(Long workspaceId ) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -119,5 +122,72 @@ public class ProjectService {
 
         project.setDeletedAt(OffsetDateTime.now());
         projectRepository.save(project);
+    }
+
+    public List<ColumnDTO> getProjectBoard(Long projectId) {
+        List<ColumnEntity> columns = columnRepository.findByProject_IdAndDeletedAtIsNullOrderByPositionAsc(projectId);
+        if (columns.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Long> columnIds = columns.stream().map(ColumnEntity::getId).collect(Collectors.toList());
+
+        // Lấy Task theo danh sách column ID
+        List<Task> allTasks = taskRepository.findByColumn_IdInOrderByPositionAsc(columnIds);
+
+        // Group tasks theo thuộc tính id của đối tượng column
+        Map<Long, List<Task>> tasksByColumnId = allTasks.stream()
+                .filter(task -> task.getColumn() != null) // Đảm bảo task có cột
+                .collect(Collectors.groupingBy(task -> task.getColumn().getId()));
+
+        return columns.stream().map(column -> {
+            ColumnDTO columnDTO = new ColumnDTO();
+            columnDTO.setId(column.getId());
+            columnDTO.setName(column.getName());
+
+            List<Task> columnTasks = tasksByColumnId.getOrDefault(column.getId(), new ArrayList<>());
+
+            List<TaskDTO> taskDTOs = columnTasks.stream().map(task -> {
+                TaskDTO taskDTO = new TaskDTO();
+                taskDTO.setId(task.getId()); // Lấy từ BaseEntity
+
+                // Trích xuất columnId từ đối tượng ColumnEntity
+                taskDTO.setColumnId(task.getColumn().getId());
+
+                taskDTO.setTitle(task.getTitle());
+                taskDTO.setDescription(task.getDescription());
+
+                // Ép kiểu Enum sang String ("HIGH", "MEDIUM", "LOW")
+                if (task.getPriority() != null) {
+                    taskDTO.setPriority(task.getPriority().name());
+                }
+
+                // Chuyển OffsetDateTime thành String để Frontend hiển thị dễ dàng
+                if (task.getDueDate() != null) {
+                    taskDTO.setDueDate(task.getDueDate().toString());
+                }
+
+                // Map Labels
+                if (task.getLabels() != null) {
+                    taskDTO.setLabels(task.getLabels().stream()
+                            .map(label -> new LabelDTO(label.getId(), label.getName(), label.getColor()))
+                            .collect(Collectors.toList()));
+                }
+
+                // Map Assignees
+                if (task.getAssignees() != null) {
+                    taskDTO.setAssignees(task.getAssignees().stream()
+                            .map(user -> new AssigneeDTO(user.getId(), user.getFullName(), user.getAvatarUrl()))
+                            .collect(Collectors.toList()));
+                }
+
+                taskDTO.setCommentCount(commentRepository.countByTaskId(task.getId()));
+
+                return taskDTO;
+            }).collect(Collectors.toList());
+
+            columnDTO.setTasks(taskDTOs);
+            return columnDTO;
+        }).collect(Collectors.toList());
     }
 }

@@ -1,40 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Layout, Breadcrumb, Button, Avatar,
     Tag, Card, Badge, Space, Typography,
-    Input, Divider, Drawer
+    Input, Divider, Drawer, Spin,
+    Modal,
+    Dropdown
 } from 'antd';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+
 import {
     PlusOutlined,
-    EllipsisOutlined,
-    UserAddOutlined,
     ClockCircleOutlined,
-    MessageOutlined,
     SearchOutlined,
     MoreOutlined,
-    TeamOutlined
+    TeamOutlined,
+    EditOutlined,
+    DeleteOutlined
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useProjectBoard } from '../../hooks/useProject';
+import AddColumnModal from './AddColumnModal';
+import EditColumnModal from './EditColumnModal';
+import { useDeleteColumn } from '../../hooks/useColumn';
+import AddTaskModal from './AddTaskModal';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 
-// --- 1. ĐỊNH NGHĨA TYPES (GIẢI QUYẾT LỖI ANY/NEVER) ---
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 
-interface Label {
+export interface Label {
     id: number;
     name: string;
     color: string;
 }
 
-interface User {
+export interface User {
     id: number;
     full_name: string;
     avatar_url: string;
 }
 
-interface Task {
+export interface Task {
     id: number;
     column_id: number;
     title: string;
@@ -46,90 +53,77 @@ interface Task {
     comment_count: number;
 }
 
-interface Column {
+export interface Column {
     id: number;
     name: string;
     tasks: Task[];
 }
 
-// --- 2. DỮ LIỆU MẪU (MOCK DATA) ---
-// Tìm đến vị trí này trong file và thay thế bằng nội dung bên dưới
-const MOCK_COLUMNS: Column[] = [
-    {
-        id: 1,
-        name: "Cần làm (Backlog)",
-        tasks: [
-            {
-                id: 101, column_id: 1, title: "Nghiên cứu kiến trúc Microservices", priority: "HIGH",
-                comment_count: 3, labels: [{ id: 1, name: "Research", color: "purple" }],
-                assignees: [{ id: 1, full_name: "Duc", avatar_url: "https://i.pravatar.cc/150?u=1" }]
-            },
-            {
-                id: 102, column_id: 1, title: "Thiết kế Landing Page", priority: "MEDIUM",
-                comment_count: 0, labels: [{ id: 2, name: "Design", color: "magenta" }],
-                due_date: "2026-05-15", assignees: []
-            },
-            {
-                id: 103, column_id: 1, title: "Viết tài liệu hướng dẫn API", priority: "LOW",
-                comment_count: 1, labels: [{ id: 3, name: "Docs", color: "cyan" }],
-                assignees: []
-            },
-        ]
-    },
-    {
-        id: 2,
-        name: "Đang thực hiện",
-        tasks: [
-            {
-                id: 201, column_id: 2, title: "Cài đặt Ant Design & Tailwind", priority: "HIGH",
-                comment_count: 12, labels: [{ id: 4, name: "Frontend", color: "blue" }],
-                due_date: "2026-04-30", assignees: [{ id: 2, full_name: "An", avatar_url: "https://i.pravatar.cc/150?u=2" }]
-            },
-            {
-                id: 202, column_id: 2, title: "Sửa lỗi bảo mật Login", priority: "HIGH",
-                comment_count: 8, labels: [{ id: 5, name: "Security", color: "red" }],
-                assignees: [{ id: 1, full_name: "Duc", avatar_url: "https://i.pravatar.cc/150?u=1" }]
-            }
-        ]
-    },
-    {
-        id: 3,
-        name: "Kiểm thử (QA)",
-        tasks: [
-            {
-                id: 301, column_id: 3, title: "Unit test Module thanh toán", priority: "MEDIUM",
-                comment_count: 2, labels: [{ id: 6, name: "Testing", color: "orange" }],
-                due_date: "2026-05-05", assignees: []
-            }
-        ]
-    },
-    {
-        id: 4,
-        name: "Hoàn thành",
-        tasks: [
-            {
-                id: 401, column_id: 4, title: "Khởi tạo Database Schema", priority: "LOW",
-                comment_count: 0, labels: [{ id: 7, name: "Database", color: "green" }],
-                assignees: [{ id: 3, full_name: "Bình", avatar_url: "https://i.pravatar.cc/150?u=3" }]
-            },
-            {
-                id: 402, column_id: 4, title: "Deploy bản Alpha lên Vercel", priority: "MEDIUM",
-                comment_count: 4, labels: [{ id: 8, name: "DevOps", color: "volcano" }],
-                assignees: []
-            }
-        ]
-    }
-];
 
 const ProjectDetail = () => {
     const navigate = useNavigate();
     const { workspaceId, projectId } = useParams();
 
-    const [columns] = useState<Column[]>(MOCK_COLUMNS);
+    const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState<boolean>(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+    const [columns, setColumns] = useState<Column[]>([]);
+    const [editingColumn, setEditingColumn] = useState<Column | null>(null);
+    const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState<boolean>(false);
+    const [selectedColumnIdForNewTask, setSelectedColumnIdForNewTask] = useState<number | null>(null);
 
-    // Fix lỗi implicitly has 'any' type cho priority
+    // 2. GỌI HOOK LẤY DỮ LIỆU API
+    const { data: boardData, isLoading } = useProjectBoard(workspaceId, projectId);
+    const { mutate: deleteColumn } = useDeleteColumn(workspaceId, projectId);
+
+    // 3. ĐỒNG BỘ DỮ LIỆU TỪ SERVER VÀO LOCAL STATE
+    useEffect(() => {
+        if (boardData) {
+            setColumns(boardData);
+        }
+    }, [boardData]);
+
+    // Hàm mở Modal thêm Task
+    const handleOpenAddTask = (columnId: number) => {
+        setSelectedColumnIdForNewTask(columnId);
+        setIsAddTaskModalOpen(true);
+    };
+
+    const handleDeleteColumn = (column: Column) => {
+        Modal.confirm({
+            title: 'Xác nhận xóa cột',
+            content: `Bạn có chắc chắn muốn xóa cột "${column.name}"?`,
+            okText: 'Xóa',
+            okType: 'danger',
+            cancelText: 'Hủy',
+            onOk: () => {
+                deleteColumn(column.id);
+            },
+        });
+    };
+
+    // 5. Khai báo Menu xổ xuống cho từng cột
+    const getColumnMenu = (col: Column) => ({
+        items: [
+            {
+                key: 'edit',
+                icon: <EditOutlined style={{ color: '#1677ff' }} />,
+                label: 'Sửa tên cột',
+                onClick: () => setEditingColumn(col), // Mở modal sửa
+            },
+            {
+                type: 'divider' as const,
+            },
+            {
+                key: 'delete',
+                icon: <DeleteOutlined />,
+                label: 'Xóa cột',
+                danger: true,
+                onClick: () => handleDeleteColumn(col), // Bật xác nhận xóa
+            },
+        ],
+    });
+
     const getPriorityTag = (priority: Priority) => {
         const colorMap: Record<Priority, string> = {
             HIGH: 'red',
@@ -144,6 +138,41 @@ const ProjectDetail = () => {
         setIsDrawerOpen(true);
     };
 
+    const onDragEnd = (result: DropResult) => {
+        const { source, destination } = result;
+        if (!destination) return;
+        if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+
+        const newColumns = [...columns];
+        const sourceColIndex = newColumns.findIndex(c => c.id.toString() === source.droppableId);
+        const destColIndex = newColumns.findIndex(c => c.id.toString() === destination.droppableId);
+
+        const sourceCol = newColumns[sourceColIndex];
+        const destCol = newColumns[destColIndex];
+
+        const [movedTask] = sourceCol.tasks.splice(source.index, 1);
+        movedTask.column_id = destCol.id;
+
+        destCol.tasks.splice(destination.index, 0, movedTask);
+        setColumns(newColumns);
+
+        // TODO: Cập nhật API sau khi kéo thả (Sẽ dùng useMutation sau)
+        console.log("Cập nhật DB:", {
+            taskId: movedTask.id,
+            newColumnId: destCol.id,
+            newPosition: destination.index
+        });
+    };
+
+    // NẾU ĐANG CALL API THÌ HIỂN THỊ LOADING
+    if (isLoading) {
+        return (
+            <Layout style={{ minHeight: '100vh', justifyContent: 'center', alignItems: 'center' }}>
+                <Spin size="large" tip="Đang tải dữ liệu dự án..." />
+            </Layout>
+        );
+    }
+
     return (
         <Layout style={{ minHeight: '100vh', background: '#f5f7f9' }}>
             {/* HEADER SECTION */}
@@ -152,11 +181,7 @@ const ProjectDetail = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
                     <Space size="large">
                         <Title level={3} style={{ margin: 0 }}>Quản lý dự án DucCTMS</Title>
-                        <Avatar.Group maxCount={3}>
-                            <Avatar src="https://i.pravatar.cc/150?u=1" />
-                            <Avatar src="https://i.pravatar.cc/150?u=2" />
-                            <Button shape="circle" icon={<UserAddOutlined />} />
-                        </Avatar.Group>
+
                     </Space>
                     <Space>
                         <Input prefix={<SearchOutlined />} placeholder="Tìm task..." />
@@ -167,63 +192,95 @@ const ProjectDetail = () => {
                         >
                             Quản lý thành viên
                         </Button>
-                        <Button type="primary" icon={<PlusOutlined />}>Thêm cột</Button>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setIsAddColumnModalOpen(true)}
+                        >
+                            Thêm cột
+                        </Button>
                     </Space>
                 </div>
             </Header>
 
-            {/* KANBAN BOARD SECTION */}
-            <Content style={{ padding: '24px', overflowX: 'auto', display: 'flex', gap: '16px' }}>
-                {columns.map(col => (
-                    <div key={col.id} style={{ width: 300, minWidth: 300 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, padding: '0 4px' }}>
-                            <Text strong>{col.name} <Badge count={col.tasks.length} showZero color="#bfbfbf" style={{ marginLeft: 8 }} /></Text>
-                            <Button type="text" size="small" icon={<EllipsisOutlined />} />
-                        </div>
-
-                        <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                            {col.tasks.map(task => (
-                                <Card
-                                    key={task.id}
-                                    hoverable
-                                    size="small"
-                                    onClick={() => handleTaskClick(task)}
-                                    style={{ borderRadius: 8, border: '1px solid #e8e8e8' }}
+            {/* 3. KANBAN BOARD SECTION - Bọc trong DragDropContext */}
+            <DragDropContext onDragEnd={onDragEnd}>
+                <Content style={{ padding: '24px', overflowX: 'auto', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                    {columns.map((col) => (
+                        <Droppable droppableId={col.id.toString()} key={col.id}>
+                            {(provided) => (
+                                <div
+                                    ref={provided.innerRef}
+                                    {...provided.droppableProps}
+                                    style={{ width: 300, minWidth: 300, background: '#ebedf0', padding: '12px', borderRadius: '12px' }}
                                 >
-                                    <div style={{ marginBottom: 8 }}>
-                                        {task.labels.map(l => (
-                                            <Tag key={l.id} color={l.color} style={{ fontSize: 10, borderRadius: 10 }}>{l.name}</Tag>
-                                        ))}
-                                    </div>
-                                    <Text strong style={{ display: 'block', marginBottom: 12 }}>{task.title}</Text>
+                                    {/* Column Header */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                                        <Text strong>{col.name} <Badge count={col.tasks.length} showZero color="#bfbfbf" /></Text>
 
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Space size="middle">
-                                            {task.due_date && (
-                                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                                    <ClockCircleOutlined style={{ marginRight: 4 }} />{task.due_date}
-                                                </Text>
-                                            )}
-                                            {task.comment_count > 0 && (
-                                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                                    <MessageOutlined style={{ marginRight: 4 }} />{task.comment_count}
-                                                </Text>
-                                            )}
-                                        </Space>
-                                        <Avatar size="small" src={`https://i.pravatar.cc/150?u=${task.id}`} />
+                                        <Dropdown menu={getColumnMenu(col)} trigger={['click']} placement="bottomRight">
+                                            <Button type="text" icon={<MoreOutlined />} size="small" />
+                                        </Dropdown>
                                     </div>
-                                    <div style={{ marginTop: 10 }}>
-                                        {getPriorityTag(task.priority)}
-                                    </div>
-                                </Card>
-                            ))}
-                            <Button type="text" block icon={<PlusOutlined />} style={{ textAlign: 'left', color: '#595959' }}>
-                                Thêm thẻ mới
-                            </Button>
-                        </Space>
-                    </div>
-                ))}
-            </Content>
+
+                                    {/* Task List */}
+                                    <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                                        {col.tasks.map((task, index) => (
+                                            <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
+                                                {(provided, snapshot) => (
+                                                    <div
+                                                        ref={provided.innerRef}
+                                                        {...provided.draggableProps}
+                                                        {...provided.dragHandleProps}
+                                                        style={{
+                                                            ...provided.draggableProps.style,
+                                                            userSelect: 'none',
+                                                            marginBottom: 8
+                                                        }}
+                                                    >
+                                                        <Card
+                                                            hoverable
+                                                            size="small"
+                                                            onClick={() => handleTaskClick(task)}
+                                                            style={{
+                                                                borderRadius: 8,
+                                                                boxShadow: snapshot.isDragging ? '0 5px 10px rgba(0,0,0,0.15)' : 'none'
+                                                            }}
+                                                        >
+                                                            <div>
+                                                                {task.labels.map(l => (
+                                                                    <Tag key={l.id} color={l.color} style={{ fontSize: 10 }}>{l.name}</Tag>
+                                                                ))}
+                                                            </div>
+                                                            <Text strong style={{ display: 'block', margin: '8px 0' }}>{task.title}</Text>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <Space size="small">
+                                                                    {task.due_date && <Text type="secondary" style={{ fontSize: 11 }}><ClockCircleOutlined /> {task.due_date}</Text>}
+                                                                </Space>
+                                                            </div>
+                                                        </Card>
+                                                    </div>
+                                                )}
+                                            </Draggable>
+                                        ))}
+                                        {provided.placeholder} {/* Rất quan trọng để giữ khoảng trống khi kéo */}
+                                    </Space>
+
+                                    <Button
+                                        type="text"
+                                        block
+                                        icon={<PlusOutlined />}
+                                        style={{ marginTop: 8, textAlign: 'left' }}
+                                        onClick={() => handleOpenAddTask(col.id)} // Gắn sự kiện vào đây
+                                    >
+                                        Thêm nhiệm vụ mới
+                                    </Button>
+                                </div>
+                            )}
+                        </Droppable>
+                    ))}
+                </Content>
+            </DragDropContext>
 
             {/* TASK DETAIL DRAWER */}
             <Drawer
@@ -273,6 +330,25 @@ const ProjectDetail = () => {
                     </Space>
                 )}
             </Drawer>
+
+            <AddColumnModal
+                open={isAddColumnModalOpen}
+                onCancel={() => setIsAddColumnModalOpen(false)}
+            />
+
+            <EditColumnModal
+                column={editingColumn}
+                onCancel={() => setEditingColumn(null)}
+            />
+
+            <AddTaskModal
+                open={isAddTaskModalOpen}
+                columnId={selectedColumnIdForNewTask}
+                onCancel={() => {
+                    setIsAddTaskModalOpen(false);
+                    setSelectedColumnIdForNewTask(null); // Reset state khi đóng
+                }}
+            />
         </Layout>
     );
 };

@@ -2,6 +2,7 @@ package com.example.doantotnghiep.controller;
 
 import com.example.doantotnghiep.dto.request.CreateProjectRequest;
 import com.example.doantotnghiep.dto.request.UpdateProjectRequest;
+import com.example.doantotnghiep.dto.response.ColumnDTO;
 import com.example.doantotnghiep.dto.response.ProjectResponseDTO;
 import com.example.doantotnghiep.service.ProjectService;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,21 @@ public class ProjectController {
             return ResponseEntity.ok("Đã xóa dự án");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{projectId}/board")
+    public ResponseEntity<?> getProjectBoard(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId) {
+
+        try {
+
+            List<ColumnDTO> boardData = projectService.getProjectBoard(projectId);
+            return ResponseEntity.ok(boardData);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Lỗi truy xuất dữ liệu Kanban board");
         }
     }
 }
