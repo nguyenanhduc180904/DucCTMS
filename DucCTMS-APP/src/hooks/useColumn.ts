@@ -1,6 +1,6 @@
 // src/hooks/useColumn.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createColumn, deleteColumn, updateColumn } from '../services/columnService';
+import { createColumn, deleteColumn, reorderColumns, updateColumn } from '../services/columnService';
 import { message } from 'antd';
 
 export const useCreateColumn = (workspaceId: string | undefined, projectId: string | undefined) => {
@@ -45,6 +45,24 @@ export const useDeleteColumn = (workspaceId: string | undefined, projectId: stri
         },
         onError: (error: any) => {
             message.error(error.response?.data || 'Không thể xóa cột, hãy xóa hết các thẻ bên trong trước.');
+        }
+    });
+};
+
+export const useReorderColumns = (workspaceId: string | undefined, projectId: string | undefined) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (payload: { id: number, position: number }[]) =>
+            reorderColumns(workspaceId!, projectId!, payload),
+        onSuccess: () => {
+            // Không nhất thiết phải hiển thị message success vì kéo thả liên tục sẽ gây spam thông báo.
+            // Cứ để nó chạy ngầm im lặng cho mượt.
+        },
+        onError: (error: any) => {
+            message.error(error.response?.data || 'Không thể lưu vị trí cột mới. Hệ thống sẽ khôi phục lại trạng thái cũ.');
+            // Quan trọng: Nếu lỗi mạng hoặc server lỗi, phải gọi lại data để kéo UI về vị trí đúng trên DB
+            queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
         }
     });
 };

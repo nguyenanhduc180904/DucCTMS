@@ -21,9 +21,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useProjectBoard } from '../../hooks/useProject';
 import AddColumnModal from './AddColumnModal';
 import EditColumnModal from './EditColumnModal';
-import { useDeleteColumn } from '../../hooks/useColumn';
+import { useDeleteColumn, useReorderColumns } from '../../hooks/useColumn';
 import AddTaskModal from './AddTaskModal';
-import { useDeleteTask } from '../../hooks/useTask';
+import { useDeleteTask, useReorderTasks } from '../../hooks/useTask';
 import EditTaskModal from './EditTaskModal';
 
 const { Header, Content } = Layout;
@@ -79,8 +79,10 @@ const ProjectDetail = () => {
     const { data: boardData, isLoading } = useProjectBoard(workspaceId, projectId);
     const { mutate: deleteColumn } = useDeleteColumn(workspaceId, projectId);
     const { mutate: deleteTask } = useDeleteTask(workspaceId, projectId);
+    const { mutate: reorderColumnsMutation } = useReorderColumns(workspaceId, projectId);
+    const { mutate: reorderTasksMutation } = useReorderTasks(workspaceId, projectId);
 
-    // 3. ĐỒNG BỘ DỮ LIỆU TỪ SERVER VÀO LOCAL STATE
+    // ĐỒNG BỘ DỮ LIỆU TỪ SERVER VÀO LOCAL STATE
     useEffect(() => {
         if (boardData) {
             setColumns(boardData);
@@ -96,7 +98,7 @@ const ProjectDetail = () => {
             okType: 'danger',
             onOk: () => {
                 deleteTask(task.id, {
-                    onSuccess: () => setIsDrawerOpen(false) // Đóng drawer sau khi xóa
+                    onSuccess: () => setIsDrawerOpen(false)
                 });
             },
         });
@@ -141,7 +143,7 @@ const ProjectDetail = () => {
         });
     };
 
-    // 5. Khai báo Menu xổ xuống cho từng cột
+    // Khai báo Menu xổ xuống cho từng cột
     const getColumnMenu = (col: Column) => ({
         items: [
             {
@@ -178,10 +180,34 @@ const ProjectDetail = () => {
     };
 
     const onDragEnd = (result: DropResult) => {
-        const { source, destination } = result;
+        const { source, destination, type } = result;
+
+        // Nếu thả ra ngoài khu vực cho phép
         if (!destination) return;
+
+        // Nếu thả lại đúng vị trí cũ
         if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
+        // --- TRƯỜNG HỢP 1: KÉO THẢ CỘT ---
+        if (type === 'column') {
+            const newColumns = Array.from(columns);
+            const [movedColumn] = newColumns.splice(source.index, 1);
+            newColumns.splice(destination.index, 0, movedColumn);
+
+            setColumns(newColumns);
+
+            // Lấy ID và Index mới map thành mảng để gửi cho Backend
+            const reorderPayload = newColumns.map((col, index) => ({
+                id: col.id,
+                position: index
+            }));
+
+            // Gọi API chạy ngầm
+            reorderColumnsMutation(reorderPayload);
+            return;
+        }
+
+        // --- TRƯỜNG HỢP 2: KÉO THẢ TASK ---
         const newColumns = [...columns];
         const sourceColIndex = newColumns.findIndex(c => c.id.toString() === source.droppableId);
         const destColIndex = newColumns.findIndex(c => c.id.toString() === destination.droppableId);
@@ -195,15 +221,24 @@ const ProjectDetail = () => {
         destCol.tasks.splice(destination.index, 0, movedTask);
         setColumns(newColumns);
 
-        // TODO: Cập nhật API sau khi kéo thả (Sẽ dùng useMutation sau)
-        console.log("Cập nhật DB:", {
-            taskId: movedTask.id,
-            newColumnId: destCol.id,
-            newPosition: destination.index
+        const updatedTasks: { id: number; columnId: number; position: number }[] = [];
+        // Luôn gửi toàn bộ task của Cột đích (Destination Column) vì thứ tự đã thay đổi
+        destCol.tasks.forEach((t, index) => {
+            updatedTasks.push({ id: t.id, columnId: destCol.id, position: index });
         });
+
+        // Nếu người dùng kéo task sang một cột KHÁC, thì cột nguồn (Source Column) cũng bị đổi thứ tự
+        // Do đó, ta phải gửi cả task của cột nguồn xuống để update
+        if (sourceCol.id !== destCol.id) {
+            sourceCol.tasks.forEach((t, index) => {
+                updatedTasks.push({ id: t.id, columnId: sourceCol.id, position: index });
+            });
+        }
+
+        // Gọi API chạy ngầm
+        reorderTasksMutation(updatedTasks);
     };
 
-    // NẾU ĐANG CALL API THÌ HIỂN THỊ LOADING
     if (isLoading) {
         return (
             <Layout style={{ minHeight: '100vh', justifyContent: 'center', alignItems: 'center' }}>
@@ -242,83 +277,117 @@ const ProjectDetail = () => {
                 </div>
             </Header>
 
-            {/* 3. KANBAN BOARD SECTION - Bọc trong DragDropContext */}
+            {/* 3. KANBAN BOARD SECTION */}
             <DragDropContext onDragEnd={onDragEnd}>
-                <Content style={{ padding: '24px', overflowX: 'auto', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                    {columns.map((col) => (
-                        <Droppable droppableId={col.id.toString()} key={col.id}>
-                            {(provided) => (
-                                <div
-                                    ref={provided.innerRef}
-                                    {...provided.droppableProps}
-                                    style={{ width: 300, minWidth: 300, background: '#ebedf0', padding: '12px', borderRadius: '12px' }}
-                                >
-                                    {/* Column Header */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                                        <Text strong>{col.name} <Badge count={col.tasks.length} showZero color="#bfbfbf" /></Text>
+                {/* Bọc toàn bộ các cột trong 1 Droppable (type="column") */}
+                <Droppable droppableId="board" direction="horizontal" type="column">
+                    {(provided) => (
+                        <Content
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            style={{ padding: '24px', overflowX: 'auto', display: 'flex', gap: '16px', alignItems: 'flex-start' }}
+                        >
+                            {columns.map((col, index) => (
+                                /* Biến mỗi cột thành 1 Draggable */
+                                <Draggable key={`column-${col.id}`} draggableId={`column-${col.id}`} index={index}>
+                                    {(providedColumn, snapshotColumn) => (
+                                        <div
+                                            ref={providedColumn.innerRef}
+                                            {...providedColumn.draggableProps}
+                                            style={{
+                                                width: 300, minWidth: 300,
+                                                background: '#ebedf0',
+                                                padding: '12px',
+                                                borderRadius: '12px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                boxShadow: snapshotColumn.isDragging ? '0 5px 15px rgba(0,0,0,0.15)' : 'none',
+                                                ...providedColumn.draggableProps.style
+                                            }}
+                                        >
+                                            {/* Column Header - Khu vực nắm để kéo cột (dragHandleProps) */}
+                                            <div
+                                                {...providedColumn.dragHandleProps}
+                                                style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, cursor: 'grab' }}
+                                            >
+                                                <Text strong>{col.name} <Badge count={col.tasks.length} showZero color="#bfbfbf" /></Text>
+                                                <Dropdown menu={getColumnMenu(col)} trigger={['click']} placement="bottomRight">
+                                                    <Button type="text" icon={<MoreOutlined />} size="small" onClick={(e) => e.stopPropagation()} />
+                                                </Dropdown>
+                                            </div>
 
-                                        <Dropdown menu={getColumnMenu(col)} trigger={['click']} placement="bottomRight">
-                                            <Button type="text" icon={<MoreOutlined />} size="small" />
-                                        </Dropdown>
-                                    </div>
-
-                                    {/* Task List */}
-                                    <Space direction="vertical" style={{ width: '100%' }} size={8}>
-                                        {col.tasks.map((task, index) => (
-                                            <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
-                                                {(provided, snapshot) => (
+                                            {/* Droppable cho Tasks bên trong cột (type="task" mặc định) */}
+                                            <Droppable droppableId={col.id.toString()} type="task">
+                                                {(providedTask) => (
                                                     <div
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                        style={{
-                                                            ...provided.draggableProps.style,
-                                                            userSelect: 'none',
-                                                            marginBottom: 8
-                                                        }}
+                                                        ref={providedTask.innerRef}
+                                                        {...providedTask.droppableProps}
+                                                        style={{ minHeight: '10px', flexGrow: 1 }}
                                                     >
-                                                        <Card
-                                                            hoverable
-                                                            size="small"
-                                                            onClick={() => handleTaskClick(task)}
-                                                            style={{
-                                                                borderRadius: 8,
-                                                                boxShadow: snapshot.isDragging ? '0 5px 10px rgba(0,0,0,0.15)' : 'none'
-                                                            }}
-                                                        >
-                                                            <div>
-                                                                {task.labels.map(l => (
-                                                                    <Tag key={l.id} color={l.color} style={{ fontSize: 10 }}>{l.name}</Tag>
-                                                                ))}
-                                                            </div>
-                                                            <Text strong style={{ display: 'block', margin: '8px 0' }}>{task.title}</Text>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                                <Space size="small">
-                                                                    {task.due_date && <Text type="secondary" style={{ fontSize: 11 }}><ClockCircleOutlined /> {task.due_date}</Text>}
-                                                                </Space>
-                                                            </div>
-                                                        </Card>
+                                                        <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                                                            {col.tasks.map((task, taskIndex) => (
+                                                                <Draggable key={task.id} draggableId={task.id.toString()} index={taskIndex}>
+                                                                    {(provided, snapshot) => (
+                                                                        <div
+                                                                            ref={provided.innerRef}
+                                                                            {...provided.draggableProps}
+                                                                            {...provided.dragHandleProps}
+                                                                            style={{
+                                                                                ...provided.draggableProps.style,
+                                                                                userSelect: 'none',
+                                                                                marginBottom: 8
+                                                                            }}
+                                                                        >
+                                                                            {/* Card hiển thị task giữ nguyên như cũ */}
+                                                                            <Card
+                                                                                hoverable
+                                                                                size="small"
+                                                                                onClick={() => handleTaskClick(task)}
+                                                                                style={{
+                                                                                    borderRadius: 8,
+                                                                                    boxShadow: snapshot.isDragging ? '0 5px 10px rgba(0,0,0,0.15)' : 'none'
+                                                                                }}
+                                                                            >
+                                                                                <div>
+                                                                                    {task.labels?.map(l => (
+                                                                                        <Tag key={l.id} color={l.color} style={{ fontSize: 10 }}>{l.name}</Tag>
+                                                                                    ))}
+                                                                                </div>
+                                                                                <Text strong style={{ display: 'block', margin: '8px 0' }}>{task.title}</Text>
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                                    <Space size="small">
+                                                                                        {task.due_date && <Text type="secondary" style={{ fontSize: 11 }}><ClockCircleOutlined /> {task.due_date}</Text>}
+                                                                                    </Space>
+                                                                                </div>
+                                                                            </Card>
+                                                                        </div>
+                                                                    )}
+                                                                </Draggable>
+                                                            ))}
+                                                            {providedTask.placeholder} {/* Giữ chỗ cho task */}
+                                                        </Space>
                                                     </div>
                                                 )}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder} {/* Rất quan trọng để giữ khoảng trống khi kéo */}
-                                    </Space>
+                                            </Droppable>
 
-                                    <Button
-                                        type="text"
-                                        block
-                                        icon={<PlusOutlined />}
-                                        style={{ marginTop: 8, textAlign: 'left' }}
-                                        onClick={() => handleOpenAddTask(col.id)} // Gắn sự kiện vào đây
-                                    >
-                                        Thêm nhiệm vụ mới
-                                    </Button>
-                                </div>
-                            )}
-                        </Droppable>
-                    ))}
-                </Content>
+                                            {/* Nút thêm nhiệm vụ */}
+                                            <Button
+                                                type="text"
+                                                block
+                                                icon={<PlusOutlined />}
+                                                style={{ marginTop: 8, textAlign: 'left' }}
+                                                onClick={() => handleOpenAddTask(col.id)}
+                                            >
+                                                Thêm nhiệm vụ mới
+                                            </Button>
+                                        </div>
+                                    )}
+                                </Draggable>
+                            ))}
+                            {provided.placeholder} {/* Giữ chỗ cho cột */}
+                        </Content>
+                    )}
+                </Droppable>
             </DragDropContext>
 
             {/* TASK DETAIL DRAWER */}

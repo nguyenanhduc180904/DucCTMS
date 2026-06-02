@@ -1,11 +1,14 @@
 package com.example.doantotnghiep.controller;
 
+import com.example.doantotnghiep.dto.request.ColumnReorderRequest;
 import com.example.doantotnghiep.dto.request.ColumnRequestDTO;
 import com.example.doantotnghiep.dto.response.ColumnDTO;
 import com.example.doantotnghiep.service.ColumnService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/projects/{projectId}/columns")
@@ -62,4 +65,13 @@ public class ColumnController {
         }
     }
 
+    @PutMapping("/reorder")
+    public ResponseEntity<Void> reorderColumns(
+            @PathVariable Long workspaceId, // Có thể dùng để check quyền (nếu cần)
+            @PathVariable Long projectId,
+            @RequestBody List<ColumnReorderRequest> requests
+    ) {
+        columnService.reorderColumns(projectId, requests);
+        return ResponseEntity.ok().build();
+    }
 }

@@ -1,5 +1,6 @@
 package com.example.doantotnghiep.service;
 
+import com.example.doantotnghiep.dto.request.TaskReorderRequest;
 import com.example.doantotnghiep.dto.request.TaskRequestDTO;
 import com.example.doantotnghiep.dto.response.TaskDTO;
 import com.example.doantotnghiep.entity.ColumnEntity;
@@ -12,6 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -103,5 +107,38 @@ public class TaskService {
 
         task.setDeletedAt(OffsetDateTime.now()); // Xóa mềm
         taskRepository.save(task);
+    }
+
+    @Transactional
+    public void reorderTasks(List<TaskReorderRequest> requests) {
+        // 1. Chuyển List request thành Map để tra cứu theo ID cho nhanh
+        Map<Long, TaskReorderRequest> requestMap = requests.stream()
+                .collect(Collectors.toMap(TaskReorderRequest::getId, req -> req));
+
+        // 2. Lấy tất cả các task cần update từ DB lên
+        List<Task> tasksToUpdate = taskRepository.findAllById(requestMap.keySet());
+
+        // 3. Cập nhật column và position mới
+        for (Task task : tasksToUpdate) {
+            TaskReorderRequest req = requestMap.get(task.getId());
+
+            if (req != null) {
+                // Cập nhật vị trí
+                task.setPosition(req.getPosition());
+
+                // Kiểm tra xem task có bị chuyển sang cột khác không
+                // Nếu cột hiện tại khác với cột Frontend gửi lên -> Cập nhật cột mới
+                if (task.getColumn() == null || !task.getColumn().getId().equals(req.getColumnId())) {
+
+                    // Sử dụng getReferenceById để tạo Proxy object (Không query database)
+                    // Rất tối ưu hiệu năng khi chỉ cần set khóa ngoại
+                    ColumnEntity newColumn = columnRepository.getReferenceById(req.getColumnId());
+                    task.setColumn(newColumn);
+                }
+            }
+        }
+
+        // 4. Lưu lại vào DB
+        taskRepository.saveAll(tasksToUpdate);
     }
 }

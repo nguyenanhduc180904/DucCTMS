@@ -25,3 +25,11 @@ export const deleteColumn = async (workspaceId: string, projectId: string, colum
         headers: { Authorization: `Bearer ${token}` }
     });
 };
+
+export const reorderColumns = async (workspaceId: string, projectId: string, payload: { id: number, position: number }[]) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.put(`${API_URL}/${workspaceId}/projects/${projectId}/columns/reorder`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};

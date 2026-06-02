@@ -1,5 +1,6 @@
 package com.example.doantotnghiep.service;
 
+import com.example.doantotnghiep.dto.request.ColumnReorderRequest;
 import com.example.doantotnghiep.dto.request.ColumnRequestDTO;
 import com.example.doantotnghiep.dto.response.ColumnDTO;
 import com.example.doantotnghiep.entity.ColumnEntity;
@@ -13,6 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -75,4 +80,26 @@ public class ColumnService {
         columnRepository.save(column);
     }
 
+    @Transactional
+    public void reorderColumns(Long projectId, List<ColumnReorderRequest> requests) {
+        // 1. Lấy tất cả các cột của dự án hiện tại lên
+        List<ColumnEntity> existingColumns = columnRepository.findByProjectIdAndDeletedAtIsNull(projectId);
+
+        // Chuyển thành Map để tra cứu nhanh theo ID
+        Map<Long, ColumnEntity> columnMap = existingColumns.stream()
+                .collect(Collectors.toMap(ColumnEntity::getId, Function.identity()));
+
+        // 2. Duyệt qua danh sách yêu cầu từ FE và cập nhật position
+        for (ColumnReorderRequest req : requests) {
+            ColumnEntity column = columnMap.get(req.getId());
+
+            // Nếu cột tồn tại và thuộc về project này thì mới update
+            if (column != null) {
+                column.setPosition(req.getPosition());
+            }
+        }
+
+        // 3. Lưu lại vào DB.
+        columnRepository.saveAll(existingColumns);
+    }
 }

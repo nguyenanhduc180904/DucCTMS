@@ -1,10 +1,13 @@
 package com.example.doantotnghiep.controller;
 
+import com.example.doantotnghiep.dto.request.TaskReorderRequest;
 import com.example.doantotnghiep.dto.request.TaskRequestDTO;
 import com.example.doantotnghiep.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/projects/{projectId}/tasks")
@@ -58,5 +61,15 @@ public class TaskController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Lỗi khi xóa nhiệm vụ: " + e.getMessage());
         }
+    }
+
+    @PutMapping("/reorder")
+    public ResponseEntity<Void> reorderTasks(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @RequestBody List<TaskReorderRequest> requests
+    ) {
+        taskService.reorderTasks(requests);
+        return ResponseEntity.ok().build();
     }
 }

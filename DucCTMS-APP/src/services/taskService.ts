@@ -24,3 +24,11 @@ export const deleteTask = async (workspaceId: string, projectId: string, taskId:
         headers: { Authorization: `Bearer ${token}` }
     });
 };
+
+export const reorderTasks = async (workspaceId: string, projectId: string, payload: { id: number, columnId: number, position: number }[]) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.put(`${API_URL}/${workspaceId}/projects/${projectId}/tasks/reorder`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};

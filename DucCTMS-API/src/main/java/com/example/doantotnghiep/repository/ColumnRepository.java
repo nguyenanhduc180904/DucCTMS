@@ -13,6 +13,9 @@ public interface ColumnRepository extends JpaRepository<ColumnEntity, Long> {
     // Lấy các cột của dự án, sắp xếp theo thứ tự hiển thị (position)
     List<ColumnEntity> findByProject_IdAndDeletedAtIsNullOrderByPositionAsc(Long projectId);
 
+    // Lấy các cột theo project_id và chưa bị soft delete
+    List<ColumnEntity> findByProjectIdAndDeletedAtIsNull(Long projectId);
+
     // Lấy position lớn nhất
     @Query("SELECT COALESCE(MAX(c.position), 0) FROM ColumnEntity c WHERE c.project.id = :projectId")
     Integer findMaxPositionByProjectId(@Param("projectId") Long projectId);
