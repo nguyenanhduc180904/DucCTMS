@@ -15,7 +15,8 @@ import {
     MoreOutlined,
     TeamOutlined,
     EditOutlined,
-    DeleteOutlined
+    DeleteOutlined,
+    TagsOutlined
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useProjectBoard } from '../../hooks/useProject';
@@ -259,6 +260,11 @@ const ProjectDetail = () => {
                     </Space>
                     <Space>
                         <Input prefix={<SearchOutlined />} placeholder="Tìm task..." />
+                        <Button
+                            icon={<TagsOutlined />}
+                            onClick={() => navigate(`/workspace/${workspaceId}/projects/${projectId}/labels`)}                        >
+                            Quản lý Nhãn
+                        </Button>
                         <Button
                             type="primary"
                             icon={<TeamOutlined />}
