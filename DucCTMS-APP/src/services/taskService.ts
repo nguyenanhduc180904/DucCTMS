@@ -56,3 +56,19 @@ export const removeAssigneeFromTask = async (workspaceId: string, projectId: str
     });
     return response.data;
 };
+
+export const addLabelToTask = async (workspaceId: string, projectId: string, taskId: number, labelId: number) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_URL}/${workspaceId}/projects/${projectId}/tasks/${taskId}/labels?labelId=${labelId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
+export const removeLabelFromTask = async (workspaceId: string, projectId: string, taskId: number, labelId: number) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.delete(`${API_URL}/${workspaceId}/projects/${projectId}/tasks/${taskId}/labels/${labelId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};

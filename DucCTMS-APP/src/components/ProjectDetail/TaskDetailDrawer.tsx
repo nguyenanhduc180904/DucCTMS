@@ -6,10 +6,13 @@ import {
 import {
     MoreOutlined, EditOutlined, DeleteOutlined,
     ClockCircleOutlined, UserOutlined, SendOutlined,
-    TeamOutlined
+    TeamOutlined,
+    TagsOutlined,
+    PlusOutlined
 } from '@ant-design/icons';
 import { useTaskDetail } from '../../hooks/useTask';
 import ManageTaskAssigneesModal from './ManageTaskAssigneesModal';
+import ManageTaskLabelsModal from './ManageTaskLabelsModal';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -31,6 +34,7 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     const [comment, setComment] = useState('');
 
     const [isAssigneeModalOpen, setIsAssigneeModalOpen] = useState(false);
+    const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
 
     const { data: task, isLoading, isError } = useTaskDetail(workspaceId, projectId, taskId);
 
@@ -40,7 +44,13 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 key: 'assignees',
                 icon: <TeamOutlined style={{ color: '#52c41a' }} />,
                 label: 'Quản lý thành viên',
-                onClick: () => setIsAssigneeModalOpen(true), // Kích hoạt mở modal mới
+                onClick: () => setIsAssigneeModalOpen(true),
+            },
+            {
+                key: 'labels',
+                icon: <TagsOutlined style={{ color: '#fa8c16' }} />,
+                label: 'Gắn nhãn nhiệm vụ',
+                onClick: () => setIsLabelModalOpen(true),
             },
             {
                 key: 'edit',
@@ -127,13 +137,56 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                                 </Avatar.Group>
                             </Col>
                             <Col span={12}>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Nhãn (Labels)</Text>
+                                {/* Tiêu đề và nút chỉnh sửa nhanh */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                    <Text type="secondary" style={{ display: 'block' }}>Nhãn (Labels)</Text>
+                                    {task.labels && task.labels.length > 0 && (
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<EditOutlined style={{ color: '#bfbfbf', fontSize: 12 }} />}
+                                            onClick={() => setIsLabelModalOpen(true)}
+                                            style={{ width: 20, height: 20, padding: 0 }}
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Khu vực hiển thị danh sách Nhãn */}
                                 {task.labels && task.labels.length > 0 ? (
-                                    task.labels.map(l => (
-                                        <Tag key={l.id} color={l.color} style={{ marginRight: 4 }}>{l.name}</Tag>
-                                    ))
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 0' }}>
+                                        {/* Hiển thị tối đa 3 nhãn đầu tiên */}
+                                        {task.labels.slice(0, 3).map(l => (
+                                            <Tag
+                                                key={l.id}
+                                                color={l.color}
+                                                style={{ marginRight: 4, cursor: 'pointer' }}
+                                                onClick={() => setIsLabelModalOpen(true)} // Bấm vào tag cũng mở Modal
+                                            >
+                                                {l.name}
+                                            </Tag>
+                                        ))}
+
+                                        {/* Nếu lớn hơn 3 nhãn, gom thành thẻ +N */}
+                                        {task.labels.length > 3 && (
+                                            <Tooltip title={task.labels.slice(3).map(l => l.name).join(', ')}>
+                                                <Tag
+                                                    style={{ cursor: 'pointer', background: '#f5f5f5', borderStyle: 'dashed' }}
+                                                    onClick={() => setIsLabelModalOpen(true)}
+                                                >
+                                                    +{task.labels.length - 3}
+                                                </Tag>
+                                            </Tooltip>
+                                        )}
+                                    </div>
                                 ) : (
-                                    <Text type="secondary" italic>Chưa có nhãn</Text>
+                                    <Button
+                                        size="small"
+                                        type="dashed"
+                                        icon={<PlusOutlined />}
+                                        onClick={() => setIsLabelModalOpen(true)}
+                                    >
+                                        Thêm nhãn
+                                    </Button>
                                 )}
                             </Col>
                             <Col span={12}>
@@ -222,6 +275,15 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 workspaceId={workspaceId}
                 projectId={projectId}
                 currentAssignees={task?.assignees || []} // Truyền dữ liệu assignees hiện có xuống modal
+            />
+
+            <ManageTaskLabelsModal
+                open={isLabelModalOpen}
+                onCancel={() => setIsLabelModalOpen(false)}
+                taskId={taskId}
+                workspaceId={workspaceId}
+                projectId={projectId}
+                currentLabels={task?.labels || []}
             />
         </Drawer >
     );

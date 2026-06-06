@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
-import { addAssigneeToTask, createTask, deleteTask, getTaskDetail, removeAssigneeFromTask, reorderTasks, updateTask } from '../services/taskService';
+import { addAssigneeToTask, addLabelToTask, createTask, deleteTask, getTaskDetail, removeAssigneeFromTask, removeLabelFromTask, reorderTasks, updateTask } from '../services/taskService';
 
 export interface LabelDTO {
     id: number;
@@ -122,5 +122,31 @@ export const useRemoveAssignee = (workspaceId: string | undefined, projectId: st
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
         },
         onError: (error: any) => message.error(error.response?.data || 'Lỗi khi gỡ thành viên')
+    });
+};
+
+export const useAddLabelToTask = (workspaceId: string | undefined, projectId: string | undefined, taskId: number | null) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (labelId: number) => addLabelToTask(workspaceId!, projectId!, taskId!, labelId),
+        onSuccess: () => {
+            message.success('Đã gắn nhãn cho công việc!');
+            queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
+            queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+        },
+        onError: (error: any) => message.error(error.response?.data || 'Lỗi khi gắn nhãn')
+    });
+};
+
+export const useRemoveLabelFromTask = (workspaceId: string | undefined, projectId: string | undefined, taskId: number | null) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (labelId: number) => removeLabelFromTask(workspaceId!, projectId!, taskId!, labelId),
+        onSuccess: () => {
+            message.success('Đã gỡ nhãn khỏi công việc');
+            queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
+            queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+        },
+        onError: (error: any) => message.error(error.response?.data || 'Lỗi khi gỡ nhãn')
     });
 };

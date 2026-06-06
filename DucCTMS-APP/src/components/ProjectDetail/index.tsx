@@ -324,7 +324,6 @@ const ProjectDetail = () => {
                                                                                 marginBottom: 8
                                                                             }}
                                                                         >
-                                                                            {/* Card hiển thị task giữ nguyên như cũ */}
                                                                             <Card
                                                                                 hoverable
                                                                                 size="small"
@@ -334,12 +333,38 @@ const ProjectDetail = () => {
                                                                                     boxShadow: snapshot.isDragging ? '0 5px 10px rgba(0,0,0,0.15)' : 'none'
                                                                                 }}
                                                                             >
-                                                                                <div>
-                                                                                    {task.labels?.map(l => (
-                                                                                        <Tag key={l.id} color={l.color} style={{ fontSize: 10 }}>{l.name}</Tag>
-                                                                                    ))}
+                                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: 4 }}>
+                                                                                    {task.labels && task.labels.length > 0 && (
+                                                                                        <>
+                                                                                            {/* Chỉ hiển thị tối đa 3 nhãn đầu tiên trên Card */}
+                                                                                            {task.labels.slice(0, 3).map(l => (
+                                                                                                <Tag
+                                                                                                    key={l.id}
+                                                                                                    color={l.color}
+                                                                                                    style={{ fontSize: 10, margin: 0, padding: '0 6px', lineHeight: '18px' }}
+                                                                                                >
+                                                                                                    {l.name}
+                                                                                                </Tag>
+                                                                                            ))}
+
+                                                                                            {/* Nếu lớn hơn 3 nhãn, gom thành thẻ +N */}
+                                                                                            {task.labels.length > 3 && (
+                                                                                                <Tag
+                                                                                                    style={{
+                                                                                                        fontSize: 10, margin: 0, padding: '0 6px',
+                                                                                                        lineHeight: '18px', background: '#f5f5f5',
+                                                                                                        borderStyle: 'dashed', color: '#8c8c8c'
+                                                                                                    }}
+                                                                                                >
+                                                                                                    +{task.labels.length - 3}
+                                                                                                </Tag>
+                                                                                            )}
+                                                                                        </>
+                                                                                    )}
                                                                                 </div>
-                                                                                <Text strong style={{ display: 'block', margin: '8px 0' }}>{task.title}</Text>
+
+                                                                                <Text strong style={{ display: 'block', margin: '4px 0 8px 0' }}>{task.title}</Text>
+
                                                                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                                                     <Space size="small">
                                                                                         {task.due_date && <Text type="secondary" style={{ fontSize: 11 }}><ClockCircleOutlined /> {task.due_date}</Text>}

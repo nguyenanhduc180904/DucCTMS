@@ -114,4 +114,34 @@ public class TaskController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    // API: Gán nhãn cho nhiệm vụ
+    @PostMapping("/{taskId}/labels")
+    public ResponseEntity<?> addLabelToTask(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @PathVariable Long taskId,
+            @RequestParam Long labelId) { // Nhận labelId thông qua Query Parameter (?labelId=...)
+        try {
+            taskService.addLabelToTask(taskId, labelId);
+            return ResponseEntity.ok("Gán nhãn cho nhiệm vụ thành công");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // API: Gỡ nhãn khỏi nhiệm vụ
+    @DeleteMapping("/{taskId}/labels/{labelId}")
+    public ResponseEntity<?> removeLabelFromTask(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @PathVariable Long taskId,
+            @PathVariable Long labelId) { // Nhận trực tiếp labelId trên đường dẫn URL
+        try {
+            taskService.removeLabelFromTask(taskId, labelId);
+            return ResponseEntity.ok("Đã gỡ nhãn khỏi nhiệm vụ thành công");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

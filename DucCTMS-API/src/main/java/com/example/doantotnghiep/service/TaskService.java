@@ -3,14 +3,8 @@ package com.example.doantotnghiep.service;
 import com.example.doantotnghiep.dto.request.TaskReorderRequest;
 import com.example.doantotnghiep.dto.request.TaskRequestDTO;
 import com.example.doantotnghiep.dto.response.*;
-import com.example.doantotnghiep.entity.ColumnEntity;
-import com.example.doantotnghiep.entity.Comment;
-import com.example.doantotnghiep.entity.Task;
-import com.example.doantotnghiep.entity.User;
-import com.example.doantotnghiep.repository.ColumnRepository;
-import com.example.doantotnghiep.repository.CommentRepository;
-import com.example.doantotnghiep.repository.TaskRepository;
-import com.example.doantotnghiep.repository.UserRepository;
+import com.example.doantotnghiep.entity.*;
+import com.example.doantotnghiep.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +23,7 @@ public class TaskService {
     private final ColumnRepository columnRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final LabelRepository labelRepository;
 
     @Transactional
     public TaskDTO createTask(TaskRequestDTO request) {
@@ -233,6 +228,46 @@ public class TaskService {
             throw new RuntimeException("Thành viên này chưa được phân công nhiệm vụ này");
         }
 
+        taskRepository.save(task);
+    }
+
+    @Transactional
+    public void addLabelToTask(Long taskId, Long labelId) {
+        // 1. Kiểm tra Task có tồn tại và chưa bị xóa mềm không
+        Task task = taskRepository.findById(taskId)
+                .filter(t -> t.getDeletedAt() == null)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhiệm vụ!"));
+
+        // 2. Kiểm tra Nhãn có tồn tại và chưa bị xóa mềm không
+        Label label = labelRepository.findById(labelId)
+                .filter(l -> l.getDeletedAt() == null)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhãn hoặc nhãn đã bị xóa!"));
+
+        // 3. Kiểm tra xem Nhãn đã được gán cho Task này chưa (tránh trùng lặp dữ liệu)
+        if (task.getLabels().stream().anyMatch(l -> l.getId().equals(labelId))) {
+            throw new RuntimeException("Nhiệm vụ này đã được gán nhãn này từ trước!");
+        }
+
+        // 4. Thực hiện gán nhãn (Hibernate sẽ tự động chèn 1 bản ghi vào bảng task_labels)
+        task.getLabels().add(label);
+        taskRepository.save(task);
+    }
+
+    @Transactional
+    public void removeLabelFromTask(Long taskId, Long labelId) {
+        // 1. Kiểm tra Task có tồn tại không
+        Task task = taskRepository.findById(taskId)
+                .filter(t -> t.getDeletedAt() == null)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhiệm vụ!"));
+
+        // 2. Xóa nhãn khỏi danh sách của Task dựa vào ID nhãn
+        boolean removed = task.getLabels().removeIf(label -> label.getId().equals(labelId));
+
+        if (!removed) {
+            throw new RuntimeException("Nhiệm vụ này hiện chưa được gán nhãn này!");
+        }
+
+        // 3. Lưu lại thay đổi (Hibernate sẽ tự động xóa bản ghi tương ứng trong bảng task_labels)
         taskRepository.save(task);
     }
 }
