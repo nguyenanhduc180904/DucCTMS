@@ -124,6 +124,22 @@ public class ProjectService {
         projectRepository.save(project);
     }
 
+    public ProjectResponseDTO getProjectDetail(Long workspaceId, Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .filter(p -> p.getWorkspace().getId().equals(workspaceId))
+                .filter(p -> p.getDeletedAt() == null)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy dự án"));
+
+        int taskCount = 0;
+        return new ProjectResponseDTO(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getColor(),
+                taskCount
+        );
+    }
+
     public List<ColumnDTO> getProjectBoard(Long projectId) {
         List<ColumnEntity> columns = columnRepository.findByProject_IdAndDeletedAtIsNullOrderByPositionAsc(projectId);
         if (columns.isEmpty()) {

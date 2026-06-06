@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
-    Layout, Breadcrumb, Button, Avatar,
+    Layout, Button,
     Tag, Card, Badge, Space, Typography,
-    Input, Divider, Drawer, Spin,
+    Input, Spin,
     Modal,
     Dropdown
 } from 'antd';
@@ -16,16 +16,18 @@ import {
     TeamOutlined,
     EditOutlined,
     DeleteOutlined,
-    TagsOutlined
+    TagsOutlined,
+    ArrowLeftOutlined
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useProjectBoard } from '../../hooks/useProject';
+import { useProjectBoard, useProjectDetail } from '../../hooks/useProject';
 import AddColumnModal from './AddColumnModal';
 import EditColumnModal from './EditColumnModal';
 import { useDeleteColumn, useReorderColumns } from '../../hooks/useColumn';
 import AddTaskModal from './AddTaskModal';
 import { useDeleteTask, useReorderTasks } from '../../hooks/useTask';
 import EditTaskModal from './EditTaskModal';
+import TaskDetailDrawer from './TaskDetailDrawer';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -77,6 +79,7 @@ const ProjectDetail = () => {
     const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState<boolean>(false);
 
     // GỌI HOOK LẤY DỮ LIỆU API
+    const { data: projectInfo } = useProjectDetail(workspaceId, projectId);
     const { data: boardData, isLoading } = useProjectBoard(workspaceId, projectId);
     const { mutate: deleteColumn } = useDeleteColumn(workspaceId, projectId);
     const { mutate: deleteTask } = useDeleteTask(workspaceId, projectId);
@@ -103,26 +106,6 @@ const ProjectDetail = () => {
                 });
             },
         });
-    };
-
-    //  Menu thao tác Task
-    const taskMenu = {
-        items: [
-            {
-                key: 'edit',
-                icon: <EditOutlined style={{ color: '#1677ff' }} />,
-                label: 'Sửa nhiệm vụ',
-                onClick: () => setIsEditTaskModalOpen(true),
-            },
-            { type: 'divider' as const },
-            {
-                key: 'delete',
-                icon: <DeleteOutlined />,
-                label: 'Xóa nhiệm vụ',
-                danger: true,
-                onClick: () => handleDeleteTask(selectedTask!),
-            },
-        ]
     };
 
     // Hàm mở Modal thêm Task
@@ -165,15 +148,6 @@ const ProjectDetail = () => {
             },
         ],
     });
-
-    const getPriorityTag = (priority: Priority) => {
-        const colorMap: Record<Priority, string> = {
-            HIGH: 'red',
-            MEDIUM: 'orange',
-            LOW: 'blue'
-        };
-        return <Tag color={colorMap[priority]}>{priority}</Tag>;
-    };
 
     const handleTaskClick = (task: Task) => {
         setSelectedTask(task);
@@ -252,11 +226,17 @@ const ProjectDetail = () => {
         <Layout style={{ minHeight: '100vh', background: '#f5f7f9' }}>
             {/* HEADER SECTION */}
             <Header style={{ background: '#fff', padding: '16px 24px', height: 'auto', borderBottom: '1px solid #f0f0f0' }}>
-                <Breadcrumb items={[{ title: 'Workspaces' }, { title: 'Dự án CMS' }]} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-                    <Space size="large">
-                        <Title level={3} style={{ margin: 0 }}>Quản lý dự án DucCTMS</Title>
-
+                    <Space size="middle" align="center">
+                        <Button
+                            type="text"
+                            icon={<ArrowLeftOutlined />}
+                            onClick={() => navigate(`/workspace/${workspaceId}/projects`)}
+                            style={{ fontSize: '18px', width: 32, height: 32, padding: 0 }}
+                        />
+                        <Title level={3} style={{ margin: 0 }}>
+                            {projectInfo?.name || <Spin size="small" />}
+                        </Title>
                     </Space>
                     <Space>
                         <Input prefix={<SearchOutlined />} placeholder="Tìm task..." />
@@ -396,58 +376,18 @@ const ProjectDetail = () => {
                 </Droppable>
             </DragDropContext>
 
-            {/* TASK DETAIL DRAWER */}
-            <Drawer
-                title="Chi tiết công việc"
-                width={500}
-                onClose={() => setIsDrawerOpen(false)}
+            <TaskDetailDrawer
                 open={isDrawerOpen}
-                extra={
-                    <Dropdown menu={taskMenu} trigger={['click']} placement="bottomRight">
-                        <Button type="text" icon={<MoreOutlined />} />
-                    </Dropdown>
-                }
-            >
-                {selectedTask && (
-                    <Space direction="vertical" style={{ width: '100%' }} size="large">
-                        <div>
-                            <Text type="secondary">Tiêu đề</Text>
-                            <Title level={4} style={{ marginTop: 4 }}>{selectedTask.title}</Title>
-                        </div>
-
-                        <div>
-                            <Text strong>Mô tả</Text>
-                            <Input.TextArea
-                                rows={4}
-                                placeholder="Thêm mô tả chi tiết cho nhiệm vụ này..."
-                                style={{ marginTop: 8 }}
-                                defaultValue={selectedTask.description}
-                            />
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 40 }}>
-                            <div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Người thực hiện</Text>
-                                <Avatar src="https://i.pravatar.cc/150?u=1" /> <Text>Đức Nguyễn</Text>
-                            </div>
-                            <div>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Độ ưu tiên</Text>
-                                {getPriorityTag(selectedTask.priority)}
-                            </div>
-                        </div>
-
-                        <Divider />
-
-                        <div>
-                            <Text strong>Hoạt động</Text>
-                            <div style={{ marginTop: 16, display: 'flex', gap: 12 }}>
-                                <Avatar src="https://i.pravatar.cc/150?u=me" />
-                                <Input placeholder="Viết bình luận..." />
-                            </div>
-                        </div>
-                    </Space>
-                )}
-            </Drawer>
+                onClose={() => {
+                    setIsDrawerOpen(false);
+                    setSelectedTask(null);
+                }}
+                taskId={selectedTask?.id || null}
+                workspaceId={workspaceId}
+                projectId={projectId}
+                onEditTask={() => setIsEditTaskModalOpen(true)}
+                onDeleteTask={() => handleDeleteTask(selectedTask!)}
+            />
 
             <AddColumnModal
                 open={isAddColumnModalOpen}

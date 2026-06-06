@@ -1,6 +1,37 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
-import { createTask, deleteTask, reorderTasks, updateTask } from '../services/taskService';
+import { addAssigneeToTask, createTask, deleteTask, getTaskDetail, removeAssigneeFromTask, reorderTasks, updateTask } from '../services/taskService';
+
+export interface LabelDTO {
+    id: number;
+    name: string;
+    color: string;
+}
+
+export interface AssigneeDTO {
+    id: number;
+    full_name: string;
+    avatar_url: string | null;
+}
+
+export interface CommentDTO {
+    id: number;
+    user: string;
+    content: string;
+    created_at: string;
+}
+
+export interface TaskDetailDTO {
+    id: number;
+    title: string;
+    description: string | null;
+    priority: string;
+    due_date: string | null;
+    column_name: string;
+    labels: LabelDTO[];
+    assignees: AssigneeDTO[];
+    comments: CommentDTO[];
+}
 
 export const useCreateTask = (workspaceId: string | undefined, projectId: string | undefined) => {
     const queryClient = useQueryClient();
@@ -54,5 +85,42 @@ export const useReorderTasks = (workspaceId: string | undefined, projectId: stri
             // Revert lại data thật từ server nếu API có lỗi
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
         }
+    });
+};
+
+export const useTaskDetail = (workspaceId: string | undefined, projectId: string | undefined, taskId: number | null) => {
+    return useQuery<TaskDetailDTO>({
+        // Thêm taskId vào queryKey để React Query tự động lấy lại data khi đổi task
+        queryKey: ['taskDetail', workspaceId, projectId, taskId],
+        queryFn: () => getTaskDetail(workspaceId!, projectId!, taskId!),
+        // Chỉ gọi API khi đã có đầy đủ 3 tham số
+        enabled: !!workspaceId && !!projectId && !!taskId,
+    });
+};
+
+export const useAddAssignee = (workspaceId: string | undefined, projectId: string | undefined, taskId: number | null) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (userId: number) => addAssigneeToTask(workspaceId!, projectId!, taskId!, userId),
+        onSuccess: () => {
+            message.success('Đã phân công thành viên vào công việc!');
+            // Kích hoạt cập nhật lại Drawer chi tiết công việc và Kanban Board
+            queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
+            queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+        },
+        onError: (error: any) => message.error(error.response?.data || 'Lỗi khi phân công thành viên')
+    });
+};
+
+export const useRemoveAssignee = (workspaceId: string | undefined, projectId: string | undefined, taskId: number | null) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (userId: number) => removeAssigneeFromTask(workspaceId!, projectId!, taskId!, userId),
+        onSuccess: () => {
+            message.success('Đã gỡ thành viên khỏi công việc');
+            queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
+            queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+        },
+        onError: (error: any) => message.error(error.response?.data || 'Lỗi khi gỡ thành viên')
     });
 };

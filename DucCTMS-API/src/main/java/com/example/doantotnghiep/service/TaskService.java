@@ -2,11 +2,15 @@ package com.example.doantotnghiep.service;
 
 import com.example.doantotnghiep.dto.request.TaskReorderRequest;
 import com.example.doantotnghiep.dto.request.TaskRequestDTO;
-import com.example.doantotnghiep.dto.response.TaskDTO;
+import com.example.doantotnghiep.dto.response.*;
 import com.example.doantotnghiep.entity.ColumnEntity;
+import com.example.doantotnghiep.entity.Comment;
 import com.example.doantotnghiep.entity.Task;
+import com.example.doantotnghiep.entity.User;
 import com.example.doantotnghiep.repository.ColumnRepository;
+import com.example.doantotnghiep.repository.CommentRepository;
 import com.example.doantotnghiep.repository.TaskRepository;
+import com.example.doantotnghiep.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +27,8 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final ColumnRepository columnRepository;
+    private final CommentRepository commentRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public TaskDTO createTask(TaskRequestDTO request) {
@@ -140,5 +146,93 @@ public class TaskService {
 
         // 4. Lưu lại vào DB
         taskRepository.saveAll(tasksToUpdate);
+    }
+
+    @Transactional(readOnly = true)
+    public TaskDetailResponseDTO getTaskDetail(Long taskId) {
+        Task task = taskRepository.findById(taskId)
+                .filter(t -> t.getDeletedAt() == null)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhiệm vụ hoặc nhiệm vụ đã bị xóa!"));
+
+        TaskDetailResponseDTO dto = new TaskDetailResponseDTO();
+        dto.setId(task.getId());
+        dto.setTitle(task.getTitle());
+        dto.setDescription(task.getDescription());
+        dto.setPriority(task.getPriority() != null ? task.getPriority().name() : null);
+
+        if (task.getDueDate() != null) {
+            dto.setDueDate(task.getDueDate().toString());
+        }
+
+        // Lấy tên cột hiện tại
+        if (task.getColumn() != null) {
+            dto.setColumnName(task.getColumn().getName());
+        }
+
+        // Lấy danh sách nhãn (Labels)
+        if (task.getLabels() != null) {
+            dto.setLabels(task.getLabels().stream()
+                    .map(label -> new LabelDTO(label.getId(), label.getName(), label.getColor()))
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setLabels(new ArrayList<>());
+        }
+
+        // Lấy danh sách người thực hiện (Assignees)
+        if (task.getAssignees() != null) {
+            dto.setAssignees(task.getAssignees().stream()
+                    .map(user -> new AssigneeResponseDTO(user.getId(), user.getFullName(), user.getAvatarUrl()))
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setAssignees(new ArrayList<>());
+        }
+
+        // Lấy danh sách bình luận (Comments)
+        List<Comment> comments = commentRepository.findByTask_IdAndDeletedAtIsNullOrderByCreatedAtDesc(taskId);
+        dto.setComments(comments.stream()
+                .map(c -> new CommentResponseDTO(
+                        c.getId(),
+                        c.getUser().getFullName(), // Lấy tên người bình luận
+                        c.getContent(),
+                        c.getCreatedAt() != null ? c.getCreatedAt().toString() : ""
+                ))
+                .collect(Collectors.toList()));
+
+        return dto;
+    }
+
+    @Transactional
+    public void addAssignee(Long taskId, Long userId) {
+        Task task = taskRepository.findById(taskId)
+                .filter(t -> t.getDeletedAt() == null)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhiệm vụ"));
+
+        User user = userRepository.findById(userId)
+                .filter(u -> u.getIsActive())
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại hoặc đã bị khóa"));
+
+        // Kiểm tra xem người dùng đã được giao nhiệm vụ này chưa (tránh trùng lặp)
+        if (task.getAssignees().stream().anyMatch(u -> u.getId().equals(userId))) {
+            throw new RuntimeException("Thành viên này đã được phân công nhiệm vụ này rồi");
+        }
+
+        task.getAssignees().add(user);
+        taskRepository.save(task);
+    }
+
+    @Transactional
+    public void removeAssignee(Long taskId, Long userId) {
+        Task task = taskRepository.findById(taskId)
+                .filter(t -> t.getDeletedAt() == null)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhiệm vụ"));
+
+        // Xóa user khỏi danh sách assignees dựa vào ID
+        boolean removed = task.getAssignees().removeIf(user -> user.getId().equals(userId));
+
+        if (!removed) {
+            throw new RuntimeException("Thành viên này chưa được phân công nhiệm vụ này");
+        }
+
+        taskRepository.save(task);
     }
 }

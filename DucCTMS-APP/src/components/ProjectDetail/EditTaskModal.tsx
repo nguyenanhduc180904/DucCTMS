@@ -52,6 +52,7 @@ const EditTaskModal = ({ task, onCancel }: EditTaskModalProps) => {
             open={!!task}
             onOk={handleOk}
             onCancel={onCancel}
+            zIndex={1100}
             okText="Lưu thay đổi"
             cancelText="Hủy"
             confirmLoading={isPending}

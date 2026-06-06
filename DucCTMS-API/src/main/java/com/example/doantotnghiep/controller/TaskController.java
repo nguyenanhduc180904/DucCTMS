@@ -2,6 +2,7 @@ package com.example.doantotnghiep.controller;
 
 import com.example.doantotnghiep.dto.request.TaskReorderRequest;
 import com.example.doantotnghiep.dto.request.TaskRequestDTO;
+import com.example.doantotnghiep.dto.response.TaskDetailResponseDTO;
 import com.example.doantotnghiep.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -71,5 +72,46 @@ public class TaskController {
     ) {
         taskService.reorderTasks(requests);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{taskId}")
+    public ResponseEntity<?> getTaskDetail(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @PathVariable Long taskId) {
+        try {
+            TaskDetailResponseDTO taskDetail = taskService.getTaskDetail(taskId);
+            return ResponseEntity.ok(taskDetail);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi khi tải chi tiết nhiệm vụ: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{taskId}/assignees")
+    public ResponseEntity<?> addAssignee(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @PathVariable Long taskId,
+            @RequestParam Long userId) {
+        try {
+            taskService.addAssignee(taskId, userId);
+            return ResponseEntity.ok("Phân công thành viên thành công");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{taskId}/assignees/{userId}")
+    public ResponseEntity<?> removeAssignee(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @PathVariable Long taskId,
+            @PathVariable Long userId) {
+        try {
+            taskService.removeAssignee(taskId, userId);
+            return ResponseEntity.ok("Đã gỡ bỏ thành viên khỏi nhiệm vụ");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

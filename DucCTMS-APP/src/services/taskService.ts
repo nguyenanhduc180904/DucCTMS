@@ -32,3 +32,27 @@ export const reorderTasks = async (workspaceId: string, projectId: string, paylo
     });
     return response.data;
 };
+
+export const getTaskDetail = async (workspaceId: string, projectId: string, taskId: number) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_URL}/${workspaceId}/projects/${projectId}/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
+export const addAssigneeToTask = async (workspaceId: string, projectId: string, taskId: number, userId: number) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_URL}/${workspaceId}/projects/${projectId}/tasks/${taskId}/assignees?userId=${userId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
+export const removeAssigneeFromTask = async (workspaceId: string, projectId: string, taskId: number, userId: number) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.delete(`${API_URL}/${workspaceId}/projects/${projectId}/tasks/${taskId}/assignees/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};

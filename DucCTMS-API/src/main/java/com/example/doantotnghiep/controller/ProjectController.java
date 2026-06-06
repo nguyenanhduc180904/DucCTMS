@@ -61,6 +61,17 @@ public class ProjectController {
         }
     }
 
+    @GetMapping("/{projectId}")
+    public ResponseEntity<?> getProjectDetail(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId) {
+        try {
+            return ResponseEntity.ok(projectService.getProjectDetail(workspaceId, projectId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @GetMapping("/{projectId}/board")
     public ResponseEntity<?> getProjectBoard(
             @PathVariable Long workspaceId,

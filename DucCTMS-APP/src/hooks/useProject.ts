@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createProject, deleteProject, getProjectBoard, getProjectsByWorkspace, updateProject } from '../services/projectService';
+import { createProject, deleteProject, getProjectBoard, getProjectDetail, getProjectsByWorkspace, updateProject } from '../services/projectService';
 import { message } from 'antd';
 
 export interface ProjectDTO {
@@ -63,6 +63,13 @@ export const useDeleteProject = (workspaceId: string | undefined) => {
     });
 };
 
+export const useProjectDetail = (workspaceId: string | undefined, projectId: string | undefined) => {
+    return useQuery<ProjectDTO>({
+        queryKey: ['projectDetail', workspaceId, projectId],
+        queryFn: () => getProjectDetail(workspaceId!, projectId!),
+        enabled: !!workspaceId && !!projectId,
+    });
+};
 
 // chi tiết dự án
 export const useProjectBoard = (workspaceId: string | undefined, projectId: string | undefined) => {

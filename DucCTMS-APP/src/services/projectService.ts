@@ -33,6 +33,14 @@ export const deleteProject = async (workspaceId: string, projectId: number) => {
     });
 };
 
+export const getProjectDetail = async (workspaceId: string, projectId: string) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_URL}/${workspaceId}/projects/${projectId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
 // chi tiết dự án
 export const getProjectBoard = async (workspaceId: string, projectId: string) => {
     const token = localStorage.getItem('token');
