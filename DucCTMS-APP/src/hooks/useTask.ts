@@ -49,12 +49,14 @@ export const useCreateTask = (workspaceId: string | undefined, projectId: string
     });
 };
 
-export const useUpdateTask = (workspaceId: string | undefined, projectId: string | undefined) => {
+export const useUpdateTask = (workspaceId: string | undefined, projectId: string | undefined, taskId: number | null) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ taskId, data }: { taskId: number, data: any }) => updateTask(workspaceId!, projectId!, taskId, data),
         onSuccess: () => {
             message.success('Cập nhật nhiệm vụ thành công!');
+            queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+            queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
         }
     });

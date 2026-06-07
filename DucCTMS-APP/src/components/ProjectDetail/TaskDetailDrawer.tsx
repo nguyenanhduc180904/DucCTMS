@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
     Drawer, Typography, Space, Button, Dropdown, Avatar,
-    Input, Divider, Tag, Row, Col, Skeleton, List, Tooltip
+    Input, Divider, Tag, Row, Col, Skeleton, List, Tooltip,
+    Modal
 } from 'antd';
 import {
     MoreOutlined, EditOutlined, DeleteOutlined,
@@ -13,6 +14,13 @@ import {
 import { useTaskDetail } from '../../hooks/useTask';
 import ManageTaskAssigneesModal from './ManageTaskAssigneesModal';
 import ManageTaskLabelsModal from './ManageTaskLabelsModal';
+import { useAddComment, useDeleteComment } from '../../hooks/useComment';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/vi';
+
+dayjs.extend(relativeTime);
+dayjs.locale('vi');
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -37,6 +45,28 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
 
     const { data: task, isLoading, isError } = useTaskDetail(workspaceId, projectId, taskId);
+    const { mutate: addComment, isPending: isAddingComment } = useAddComment(workspaceId, projectId, taskId);
+    const { mutate: deleteComment } = useDeleteComment(workspaceId, projectId, taskId);
+
+    const handleCommentSubmit = () => {
+        if (!comment.trim()) return;
+        addComment(comment.trim(), {
+            onSuccess: () => setComment('')
+        });
+    };
+
+    const handleDeleteComment = (commentId: number) => {
+        Modal.confirm({
+            title: 'Xóa bình luận?',
+            content: 'Bạn có chắc chắn muốn xóa bình luận này không?',
+            okText: 'Xóa',
+            okType: 'danger',
+            cancelText: 'Hủy',
+            onOk: () => {
+                deleteComment(commentId);
+            }
+        });
+    };
 
     const taskMenu = {
         items: [
@@ -197,7 +227,7 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                                 <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Hạn chót</Text>
                                 <Space>
                                     <ClockCircleOutlined style={{ color: task.due_date ? '#faad14' : '#bfbfbf' }} />
-                                    <Text>{task.due_date ? task.due_date : 'Không có'}</Text>
+                                    <Text>{task.due_date ? dayjs(task.due_date).format('HH:mm - DD/MM/YYYY') : 'Không có'}</Text>
                                 </Space>
                             </Col>
                         </Row>
@@ -233,9 +263,21 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                                     rows={2}
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
+                                    onPressEnter={(e) => {
+                                        if (!e.shiftKey) {
+                                            e.preventDefault();
+                                            handleCommentSubmit();
+                                        }
+                                    }}
                                 />
                                 <div style={{ marginTop: 8, textAlign: 'right' }}>
-                                    <Button type="primary" icon={<SendOutlined />} disabled={!comment.trim()}>
+                                    <Button
+                                        type="primary"
+                                        icon={<SendOutlined />}
+                                        disabled={!comment.trim()}
+                                        loading={isAddingComment}
+                                        onClick={handleCommentSubmit}
+                                    >
                                         Gửi bình luận
                                     </Button>
                                 </div>
@@ -248,17 +290,30 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                             itemLayout="horizontal"
                             dataSource={task.comments || []}
                             renderItem={(item) => (
-                                <List.Item>
+                                <List.Item
+                                    actions={[
+                                        <Button
+                                            type="text"
+                                            danger
+                                            size="small"
+                                            icon={<DeleteOutlined />}
+                                            onClick={() => handleDeleteComment(item.id)}
+                                        />
+                                    ]}
+                                >
                                     <List.Item.Meta
                                         avatar={<Avatar icon={<UserOutlined />} />}
                                         title={
                                             <Space>
                                                 <Text strong>{item.user}</Text>
-                                                {/* Hiển thị thời gian ngắn gọn nếu cần format */}
-                                                <Text type="secondary" style={{ fontSize: 12 }}>{item.created_at}</Text>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>{dayjs(item.created_at).fromNow()}</Text>
                                             </Space>
                                         }
-                                        description={<Text style={{ color: '#333' }}>{item.content}</Text>}
+                                        description={
+                                            <div style={{ color: '#333', whiteSpace: 'pre-wrap', marginTop: 4 }}>
+                                                {item.content}
+                                            </div>
+                                        }
                                     />
                                 </List.Item>
                             )}

@@ -89,7 +89,7 @@ const AddTaskModal = ({ open, columnId, onCancel }: AddTaskModalProps) => {
                         label="Hạn chót"
                         style={{ flex: 1 }}
                     >
-                        <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày..." />
+                        <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" showTime={{ format: 'HH:mm' }} placeholder="Chọn ngày..." />
                     </Form.Item>
                 </div>
             </Form>

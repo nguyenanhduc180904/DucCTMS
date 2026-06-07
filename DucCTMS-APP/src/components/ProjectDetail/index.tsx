@@ -28,6 +28,12 @@ import AddTaskModal from './AddTaskModal';
 import { useDeleteTask, useReorderTasks } from '../../hooks/useTask';
 import EditTaskModal from './EditTaskModal';
 import TaskDetailDrawer from './TaskDetailDrawer';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/vi';
+
+dayjs.extend(relativeTime);
+dayjs.locale('vi');
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -367,7 +373,7 @@ const ProjectDetail = () => {
 
                                                                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                                                     <Space size="small">
-                                                                                        {task.due_date && <Text type="secondary" style={{ fontSize: 11 }}><ClockCircleOutlined /> {task.due_date}</Text>}
+                                                                                        {task.due_date && <Text type="secondary" style={{ fontSize: 11 }}><ClockCircleOutlined /> {dayjs(task.due_date).format('HH:mm - DD/MM/YYYY')}</Text>}
                                                                                     </Space>
                                                                                 </div>
                                                                             </Card>
@@ -434,7 +440,8 @@ const ProjectDetail = () => {
             />
 
             <EditTaskModal
-                task={isEditTaskModalOpen ? selectedTask : null}
+                open={isEditTaskModalOpen}
+                taskId={selectedTask?.id || null}
                 onCancel={() => setIsEditTaskModalOpen(false)}
             />
         </Layout>

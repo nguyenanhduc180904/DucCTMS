@@ -2,33 +2,35 @@ import { useEffect } from 'react';
 import { Modal, Form, Input, Select, DatePicker } from 'antd';
 import { useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { useUpdateTask } from '../../hooks/useTask';
-import type { Task } from '.';
+import { useTaskDetail, useUpdateTask } from '../../hooks/useTask';
 
 interface EditTaskModalProps {
-    task: Task | null;
+    open: boolean;
+    taskId: number | null;
     onCancel: () => void;
 }
-
 const { Option } = Select;
 const { TextArea } = Input;
 
-const EditTaskModal = ({ task, onCancel }: EditTaskModalProps) => {
+const EditTaskModal = ({ open, taskId, onCancel }: EditTaskModalProps) => {
     const [form] = Form.useForm();
     const { workspaceId, projectId } = useParams();
-    const { mutate: updateTask, isPending } = useUpdateTask(workspaceId, projectId);
+
+    const { data: freshTask } = useTaskDetail(workspaceId, projectId, taskId);
+    const { mutate: updateTask, isPending } = useUpdateTask(workspaceId, projectId, taskId);
 
     useEffect(() => {
-        if (task) {
+        // Lắng nghe freshTask thay vì task cũ
+        if (freshTask && open) {
             form.setFieldsValue({
-                title: task.title,
-                description: task.description,
-                priority: task.priority,
-                // Chuyển string date thành object của dayjs để DatePicker hiểu
-                dueDate: task.due_date ? dayjs(task.due_date) : null,
+                title: freshTask.title,
+                description: freshTask.description,
+                priority: freshTask.priority,
+                // Chú ý: DTO của bạn trả về là due_date (snake_case) 
+                dueDate: freshTask.due_date ? dayjs(freshTask.due_date) : null,
             });
         }
-    }, [task, form]);
+    }, [freshTask, open, form]);
 
     const handleOk = () => {
         form.validateFields().then((values) => {
@@ -37,7 +39,7 @@ const EditTaskModal = ({ task, onCancel }: EditTaskModalProps) => {
                 dueDate: values.dueDate ? values.dueDate.format('YYYY-MM-DDTHH:mm:ssZ') : null,
             };
 
-            updateTask({ taskId: task!.id, data: formattedValues }, {
+            updateTask({ taskId: taskId!, data: formattedValues }, {
                 onSuccess: () => {
                     form.resetFields();
                     onCancel();
@@ -49,7 +51,7 @@ const EditTaskModal = ({ task, onCancel }: EditTaskModalProps) => {
     return (
         <Modal
             title="Sửa nhiệm vụ"
-            open={!!task}
+            open={open}
             onOk={handleOk}
             onCancel={onCancel}
             zIndex={1100}
@@ -74,7 +76,7 @@ const EditTaskModal = ({ task, onCancel }: EditTaskModalProps) => {
                         </Select>
                     </Form.Item>
                     <Form.Item name="dueDate" label="Hạn chót" style={{ flex: 1 }}>
-                        <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                        <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" showTime={{ format: 'HH:mm' }} />
                     </Form.Item>
                 </div>
             </Form>
