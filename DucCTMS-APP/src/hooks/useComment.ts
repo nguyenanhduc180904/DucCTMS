@@ -15,6 +15,7 @@ export const useAddComment = (
             message.success('Đã gửi bình luận thành công');
             // Làm mới dữ liệu chi tiết Task để cập nhật danh sách comment mới lập tức
             queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
+            queryClient.invalidateQueries({ queryKey: ['taskLogs', workspaceId, projectId, taskId] });
         },
         onError: (error: any) => {
             message.error(error.response?.data || 'Không thể gửi bình luận');
@@ -35,6 +36,7 @@ export const useDeleteComment = (
             message.success('Đã xóa bình luận thành công');
             // Làm mới dữ liệu chi tiết Task sau khi xóa thành công
             queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
+            queryClient.invalidateQueries({ queryKey: ['taskLogs', workspaceId, projectId, taskId] });
         },
         onError: (error: any) => {
             message.error(error.response?.data || 'Không thể xóa bình luận');

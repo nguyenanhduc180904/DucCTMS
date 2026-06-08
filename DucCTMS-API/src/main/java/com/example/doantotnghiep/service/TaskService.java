@@ -19,11 +19,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TaskService {
 
+    private final LogHelperService logHelper;
     private final TaskRepository taskRepository;
     private final ColumnRepository columnRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final LabelRepository labelRepository;
+    private final ActivityLogRepository activityLogRepository;
 
     @Transactional
     public TaskDTO createTask(TaskRequestDTO request) {
@@ -54,6 +56,16 @@ public class TaskService {
 
         // 4. Lưu vào Database
         Task savedTask = taskRepository.save(task);
+
+        logHelper.logActivity(
+                savedTask.getColumn().getProject().getId(), // projectId
+                savedTask.getId(),                          // taskId
+                "CREATE_TASK",                              // action
+                Map.of(
+                        "title", savedTask.getTitle(),
+                        "priority", savedTask.getPriority()
+                )                                           // details (JSON)
+        );
 
         // 5. Build DTO trả về cho React hiển thị ngay lập tức
         TaskDTO dto = new TaskDTO();
@@ -92,6 +104,13 @@ public class TaskService {
 
         Task updatedTask = taskRepository.save(task);
 
+        logHelper.logActivity(
+                task.getColumn().getProject().getId(),
+                taskId,
+                "UPDATE_TASK",
+                Map.of("message", "đã cập nhật thông tin nhiệm vụ")
+        );
+
         // Map sang DTO trả về (giản lược)
         TaskDTO dto = new TaskDTO();
         dto.setId(updatedTask.getId());
@@ -127,14 +146,28 @@ public class TaskService {
                 // Cập nhật vị trí
                 task.setPosition(req.getPosition());
 
-                // Kiểm tra xem task có bị chuyển sang cột khác không
-                // Nếu cột hiện tại khác với cột Frontend gửi lên -> Cập nhật cột mới
+                // Nếu task bị kéo sang một cột mới (khác ID cột hiện tại)
                 if (task.getColumn() == null || !task.getColumn().getId().equals(req.getColumnId())) {
 
-                    // Sử dụng getReferenceById để tạo Proxy object (Không query database)
-                    // Rất tối ưu hiệu năng khi chỉ cần set khóa ngoại
-                    ColumnEntity newColumn = columnRepository.getReferenceById(req.getColumnId());
+                    // Lưu lại tên cột cũ để ghi log
+                    String oldColumnName = task.getColumn() != null ? task.getColumn().getName() : "Không xác định";
+
+                    // Tìm cột mới (Dùng findById để lấy được Tên cột)
+                    ColumnEntity newColumn = columnRepository.findById(req.getColumnId())
+                            .orElseThrow(() -> new RuntimeException("Cột không tồn tại"));
+
                     task.setColumn(newColumn);
+
+                    // GHI LOG: Chuyển cột
+                    logHelper.logActivity(
+                            newColumn.getProject().getId(),
+                            task.getId(),
+                            "MOVE_TASK",
+                            Map.of(
+                                    "from_column", oldColumnName,
+                                    "to_column", newColumn.getName()
+                            )
+                    );
                 }
             }
         }
@@ -213,22 +246,40 @@ public class TaskService {
 
         task.getAssignees().add(user);
         taskRepository.save(task);
+
+        logHelper.logActivity(
+                task.getColumn().getProject().getId(),
+                taskId,
+                "ADD_ASSIGNEE",
+                Map.of("user_name", user.getFullName()) // user là người vừa được gán
+        );
     }
 
     @Transactional
     public void removeAssignee(Long taskId, Long userId) {
+        User user = userRepository.findById(userId)
+                .filter(u -> u.getIsActive())
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại hoặc đã bị khóa"));
+
         Task task = taskRepository.findById(taskId)
                 .filter(t -> t.getDeletedAt() == null)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhiệm vụ"));
 
         // Xóa user khỏi danh sách assignees dựa vào ID
-        boolean removed = task.getAssignees().removeIf(user -> user.getId().equals(userId));
+        boolean removed = task.getAssignees().removeIf(u -> u.getId().equals(userId));
 
         if (!removed) {
             throw new RuntimeException("Thành viên này chưa được phân công nhiệm vụ này");
         }
 
         taskRepository.save(task);
+
+        logHelper.logActivity(
+                task.getColumn().getProject().getId(),
+                taskId,
+                "REMOVE_ASSIGNEE",
+                Map.of("user_name", user.getFullName()) // user là người vừa bị gỡ
+        );
     }
 
     @Transactional
@@ -251,17 +302,28 @@ public class TaskService {
         // 4. Thực hiện gán nhãn (Hibernate sẽ tự động chèn 1 bản ghi vào bảng task_labels)
         task.getLabels().add(label);
         taskRepository.save(task);
+
+        logHelper.logActivity(
+                task.getColumn().getProject().getId(),
+                taskId,
+                "ADD_LABEL",
+                Map.of("label_name", label.getName(), "label_color", label.getColor())
+        );
     }
 
     @Transactional
     public void removeLabelFromTask(Long taskId, Long labelId) {
+        Label label = labelRepository.findById(labelId)
+                .filter(l -> l.getDeletedAt() == null)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhãn hoặc nhãn đã bị xóa!"));
+
         // 1. Kiểm tra Task có tồn tại không
         Task task = taskRepository.findById(taskId)
                 .filter(t -> t.getDeletedAt() == null)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhiệm vụ!"));
 
         // 2. Xóa nhãn khỏi danh sách của Task dựa vào ID nhãn
-        boolean removed = task.getLabels().removeIf(label -> label.getId().equals(labelId));
+        boolean removed = task.getLabels().removeIf(l -> l.getId().equals(labelId));
 
         if (!removed) {
             throw new RuntimeException("Nhiệm vụ này hiện chưa được gán nhãn này!");
@@ -269,5 +331,31 @@ public class TaskService {
 
         // 3. Lưu lại thay đổi (Hibernate sẽ tự động xóa bản ghi tương ứng trong bảng task_labels)
         taskRepository.save(task);
+        logHelper.logActivity(
+                task.getColumn().getProject().getId(),
+                taskId,
+                "REMOVE_LABEL",
+                Map.of("label_name", label.getName(), "label_color", label.getColor())
+        );
+
+    }
+
+    // Danh sách log task
+    @Transactional(readOnly = true)
+    public List<ActivityLogResponseDTO> getTaskActivities(Long taskId) {
+        // Kiểm tra task tồn tại
+        taskRepository.findById(taskId)
+                .filter(t -> t.getDeletedAt() == null)
+                .orElseThrow(() -> new RuntimeException("Nhiệm vụ không tồn tại"));
+
+        List<ActivityLog> logs = activityLogRepository.findByTask_IdAndDeletedAtIsNullOrderByCreatedAtDesc(taskId);
+
+        return logs.stream().map(log -> new ActivityLogResponseDTO(
+                log.getId(),
+                log.getUser() != null ? log.getUser().getFullName() : "Hệ thống",
+                log.getAction(),
+                log.getDetails(),
+                log.getCreatedAt().toString()
+        )).collect(Collectors.toList());
     }
 }

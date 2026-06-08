@@ -144,4 +144,16 @@ public class TaskController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/{taskId}/logs")
+    public ResponseEntity<?> getTaskLogs(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @PathVariable Long taskId) {
+        try {
+            return ResponseEntity.ok(taskService.getTaskActivities(taskId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

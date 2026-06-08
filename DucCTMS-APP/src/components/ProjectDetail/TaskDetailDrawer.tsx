@@ -11,13 +11,15 @@ import {
     TagsOutlined,
     PlusOutlined
 } from '@ant-design/icons';
-import { useTaskDetail } from '../../hooks/useTask';
+import { useTaskDetail, useTaskLogs } from '../../hooks/useTask';
 import ManageTaskAssigneesModal from './ManageTaskAssigneesModal';
 import ManageTaskLabelsModal from './ManageTaskLabelsModal';
 import { useAddComment, useDeleteComment } from '../../hooks/useComment';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
+import { Tabs, Timeline } from 'antd';
+import { HistoryOutlined, MessageOutlined } from '@ant-design/icons';
 
 dayjs.extend(relativeTime);
 dayjs.locale('vi');
@@ -47,6 +49,45 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
     const { data: task, isLoading, isError } = useTaskDetail(workspaceId, projectId, taskId);
     const { mutate: addComment, isPending: isAddingComment } = useAddComment(workspaceId, projectId, taskId);
     const { mutate: deleteComment } = useDeleteComment(workspaceId, projectId, taskId);
+    const { data: logs = [], isLoading: isLoadingLogs } = useTaskLogs(workspaceId, projectId, taskId);
+
+    const renderLogMessage = (log: any) => {
+        const details = log.details || {}; // Lấy cục JSON details ra
+
+        switch (log.action) {
+            case 'CREATE_TASK':
+                return <>đã tạo nhiệm vụ này</>;
+            case 'UPDATE_TASK':
+                return <>đã cập nhật thông tin nhiệm vụ</>;
+
+            case 'ADD_ASSIGNEE':
+                return <>đã thêm <b>{details.user_name}</b> vào công việc</>;
+            case 'REMOVE_ASSIGNEE':
+                return <>đã gỡ <b>{details.user_name}</b> khỏi công việc</>;
+
+            case 'ADD_LABEL':
+                return <>đã gắn nhãn <Tag color={details.label_color} style={{ margin: 0 }}>{details.label_name}</Tag></>;
+            case 'REMOVE_LABEL':
+                return <>đã gỡ nhãn <Tag color={details.label_color} style={{ margin: 0 }}>{details.label_name}</Tag></>;
+
+            case 'MOVE_TASK':
+                return <>đã chuyển công việc từ cột <b>{details.from_column}</b> sang <b>{details.to_column}</b></>;
+
+            case 'ADD_COMMENT':
+                return <>đã thêm một bình luận mới</>;
+            case 'DELETE_COMMENT':
+                return <>đã xóa một bình luận</>;
+
+            default:
+                return <>đã thực hiện thao tác <Tag>{log.action}</Tag></>;
+        }
+    };
+
+    const getTimelineColor = (action: string) => {
+        if (action.startsWith('CREATE')) return 'green';
+        if (action.startsWith('DELETE') || action.includes('REMOVE')) return 'red';
+        return 'blue';
+    };
 
     const handleCommentSubmit = () => {
         if (!comment.trim()) return;
@@ -250,75 +291,114 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
 
                     <Divider style={{ margin: '12px 0' }} />
 
-                    {/* 4. BÌNH LUẬN & HOẠT ĐỘNG */}
-                    <div>
-                        <Text strong style={{ fontSize: 16 }}>Bình luận & Hoạt động</Text>
-
-                        {/* Ô nhập bình luận */}
-                        <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                            <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
-                            <div style={{ flex: 1 }}>
-                                <TextArea
-                                    placeholder="Đặt câu hỏi hoặc thêm bình luận..."
-                                    rows={2}
-                                    value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
-                                    onPressEnter={(e) => {
-                                        if (!e.shiftKey) {
-                                            e.preventDefault();
-                                            handleCommentSubmit();
-                                        }
-                                    }}
-                                />
-                                <div style={{ marginTop: 8, textAlign: 'right' }}>
-                                    <Button
-                                        type="primary"
-                                        icon={<SendOutlined />}
-                                        disabled={!comment.trim()}
-                                        loading={isAddingComment}
-                                        onClick={handleCommentSubmit}
-                                    >
-                                        Gửi bình luận
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Danh sách bình luận */}
-                        <List
-                            style={{ marginTop: 24 }}
-                            itemLayout="horizontal"
-                            dataSource={task.comments || []}
-                            renderItem={(item) => (
-                                <List.Item
-                                    actions={[
-                                        <Button
-                                            type="text"
-                                            danger
-                                            size="small"
-                                            icon={<DeleteOutlined />}
-                                            onClick={() => handleDeleteComment(item.id)}
-                                        />
-                                    ]}
-                                >
-                                    <List.Item.Meta
-                                        avatar={<Avatar icon={<UserOutlined />} />}
-                                        title={
-                                            <Space>
-                                                <Text strong>{item.user}</Text>
-                                                <Text type="secondary" style={{ fontSize: 12 }}>{dayjs(item.created_at).fromNow()}</Text>
-                                            </Space>
-                                        }
-                                        description={
-                                            <div style={{ color: '#333', whiteSpace: 'pre-wrap', marginTop: 4 }}>
-                                                {item.content}
+                    <Tabs
+                        defaultActiveKey="comments"
+                        items={[
+                            {
+                                key: 'comments',
+                                label: <span><MessageOutlined /> Bình luận</span>,
+                                children: (
+                                    <div>
+                                        {/* Ô nhập bình luận */}
+                                        <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                                            <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
+                                            <div style={{ flex: 1 }}>
+                                                <TextArea
+                                                    placeholder="Đặt câu hỏi hoặc thêm bình luận..."
+                                                    rows={2}
+                                                    value={comment}
+                                                    onChange={(e) => setComment(e.target.value)}
+                                                    onPressEnter={(e) => {
+                                                        if (!e.shiftKey) {
+                                                            e.preventDefault();
+                                                            handleCommentSubmit();
+                                                        }
+                                                    }}
+                                                />
+                                                <div style={{ marginTop: 8, textAlign: 'right' }}>
+                                                    <Button
+                                                        type="primary"
+                                                        icon={<SendOutlined />}
+                                                        disabled={!comment.trim()}
+                                                        loading={isAddingComment}
+                                                        onClick={handleCommentSubmit}
+                                                    >
+                                                        Gửi bình luận
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        }
-                                    />
-                                </List.Item>
-                            )}
-                        />
-                    </div>
+                                        </div>
+
+                                        {/* Danh sách bình luận */}
+                                        <List
+                                            style={{ marginTop: 24 }}
+                                            itemLayout="horizontal"
+                                            dataSource={task.comments || []}
+                                            renderItem={(item) => (
+                                                <List.Item
+                                                    actions={[
+                                                        <Button
+                                                            type="text"
+                                                            danger
+                                                            size="small"
+                                                            icon={<DeleteOutlined />}
+                                                            onClick={() => handleDeleteComment(item.id)}
+                                                        />
+                                                    ]}
+                                                >
+                                                    <List.Item.Meta
+                                                        avatar={<Avatar icon={<UserOutlined />} />}
+                                                        title={
+                                                            <Space>
+                                                                <Text strong>{item.user}</Text>
+                                                                <Text type="secondary" style={{ fontSize: 12 }}>{dayjs(item.created_at).fromNow()}</Text>
+                                                            </Space>
+                                                        }
+                                                        description={
+                                                            <div style={{ color: '#333', whiteSpace: 'pre-wrap', marginTop: 4 }}>
+                                                                {item.content}
+                                                            </div>
+                                                        }
+                                                    />
+                                                </List.Item>
+                                            )}
+                                        />
+                                    </div>
+                                )
+                            },
+                            // {/* Tab Lịch sử hoạt động thực tế */ }
+                            {
+                                key: 'history',
+                                label: <span><HistoryOutlined /> Lịch sử hoạt động</span>,
+                                children: (
+                                    <div style={{ marginTop: 16, paddingLeft: 8 }}>
+                                        {isLoadingLogs ? (
+                                            <Skeleton active paragraph={{ rows: 3 }} />
+                                        ) : logs.length === 0 ? (
+                                            <Text type="secondary" italic>Chưa có lịch sử hoạt động nào.</Text>
+                                        ) : (
+                                            <Timeline
+                                                items={logs.map(log => ({
+                                                    color: getTimelineColor(log.action),
+                                                    children: (
+                                                        <Space direction="vertical" size={0} style={{ width: '100%' }}>
+                                                            <div>
+                                                                <Text strong>{log.actor_name}</Text> {renderLogMessage(log)}
+                                                            </div>
+                                                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                                                {dayjs(log.created_at).fromNow()} – {dayjs(log.created_at).format('HH:mm DD/MM/YYYY')}
+                                                            </Text>
+                                                        </Space>
+                                                    )
+                                                }))}
+                                            />
+                                        )}
+                                    </div>
+                                )
+                            }
+                        ]}
+                    />
+
                 </Space>
             )
             }

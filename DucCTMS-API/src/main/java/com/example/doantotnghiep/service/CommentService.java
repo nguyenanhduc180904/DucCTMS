@@ -13,11 +13,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class CommentService {
 
+    private final LogHelperService logHelper;
     private final CommentRepository commentRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
@@ -39,6 +41,13 @@ public class CommentService {
         comment.setCreatedAt(OffsetDateTime.now());
 
         Comment savedComment = commentRepository.save(comment);
+
+        logHelper.logActivity(
+                task.getColumn().getProject().getId(),
+                taskId,
+                "ADD_COMMENT",
+                Map.of("comment_content", content) // Lưu nội dung comment vào cột JSON
+        );
 
         return new CommentResponseDTO(
                 savedComment.getId(),
@@ -65,5 +74,12 @@ public class CommentService {
 
         comment.setDeletedAt(OffsetDateTime.now());
         commentRepository.save(comment);
+
+        logHelper.logActivity(
+                comment.getTask().getColumn().getProject().getId(),
+                comment.getTask().getId(),
+                "DELETE_COMMENT",
+                Map.of("message", "đã xóa một bình luận")
+        );
     }
 }

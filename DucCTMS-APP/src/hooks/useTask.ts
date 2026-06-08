@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
-import { addAssigneeToTask, addLabelToTask, createTask, deleteTask, getTaskDetail, removeAssigneeFromTask, removeLabelFromTask, reorderTasks, updateTask } from '../services/taskService';
+import { addAssigneeToTask, addLabelToTask, createTask, deleteTask, getTaskDetail, getTaskLogs, removeAssigneeFromTask, removeLabelFromTask, reorderTasks, updateTask } from '../services/taskService';
 
 export interface LabelDTO {
     id: number;
@@ -33,6 +33,14 @@ export interface TaskDetailDTO {
     comments: CommentDTO[];
 }
 
+export interface ActivityLogDTO {
+    id: number;
+    actor_name: string;
+    action: string;
+    details: Record<string, any> | null;
+    created_at: string;
+}
+
 export const useCreateTask = (workspaceId: string | undefined, projectId: string | undefined) => {
     const queryClient = useQueryClient();
 
@@ -58,6 +66,7 @@ export const useUpdateTask = (workspaceId: string | undefined, projectId: string
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
             queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+            queryClient.invalidateQueries({ queryKey: ['taskLogs', workspaceId, projectId, taskId] });
         }
     });
 };
@@ -109,6 +118,7 @@ export const useAddAssignee = (workspaceId: string | undefined, projectId: strin
             // Kích hoạt cập nhật lại Drawer chi tiết công việc và Kanban Board
             queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+            queryClient.invalidateQueries({ queryKey: ['taskLogs', workspaceId, projectId, taskId] });
         },
         onError: (error: any) => message.error(error.response?.data || 'Lỗi khi phân công thành viên')
     });
@@ -122,6 +132,7 @@ export const useRemoveAssignee = (workspaceId: string | undefined, projectId: st
             message.success('Đã gỡ thành viên khỏi công việc');
             queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+            queryClient.invalidateQueries({ queryKey: ['taskLogs', workspaceId, projectId, taskId] });
         },
         onError: (error: any) => message.error(error.response?.data || 'Lỗi khi gỡ thành viên')
     });
@@ -135,6 +146,7 @@ export const useAddLabelToTask = (workspaceId: string | undefined, projectId: st
             message.success('Đã gắn nhãn cho công việc!');
             queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+            queryClient.invalidateQueries({ queryKey: ['taskLogs', workspaceId, projectId, taskId] });
         },
         onError: (error: any) => message.error(error.response?.data || 'Lỗi khi gắn nhãn')
     });
@@ -148,7 +160,16 @@ export const useRemoveLabelFromTask = (workspaceId: string | undefined, projectI
             message.success('Đã gỡ nhãn khỏi công việc');
             queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+            queryClient.invalidateQueries({ queryKey: ['taskLogs', workspaceId, projectId, taskId] });
         },
         onError: (error: any) => message.error(error.response?.data || 'Lỗi khi gỡ nhãn')
+    });
+};
+
+export const useTaskLogs = (workspaceId: string | undefined, projectId: string | undefined, taskId: number | null) => {
+    return useQuery<ActivityLogDTO[]>({
+        queryKey: ['taskLogs', workspaceId, projectId, taskId],
+        queryFn: () => getTaskLogs(workspaceId!, projectId!, taskId!),
+        enabled: !!workspaceId && !!projectId && !!taskId,
     });
 };

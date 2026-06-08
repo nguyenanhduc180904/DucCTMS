@@ -72,3 +72,11 @@ export const removeLabelFromTask = async (workspaceId: string, projectId: string
     });
     return response.data;
 };
+
+export const getTaskLogs = async (workspaceId: string, projectId: string, taskId: number) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_URL}/${workspaceId}/projects/${projectId}/tasks/${taskId}/logs`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
