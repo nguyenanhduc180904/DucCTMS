@@ -7,8 +7,8 @@ import com.example.doantotnghiep.entity.ColumnEntity;
 import com.example.doantotnghiep.entity.Project;
 import com.example.doantotnghiep.repository.ColumnRepository;
 import com.example.doantotnghiep.repository.ProjectRepository;
-import com.example.doantotnghiep.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,9 +23,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ColumnService {
 
+    private final SimpMessagingTemplate messagingTemplate;
     private final ColumnRepository columnRepository;
     private final ProjectRepository projectRepository;
-    private final TaskRepository taskRepository;
 
     @Transactional
     public ColumnDTO createColumn(Long projectId, ColumnRequestDTO request) {
@@ -46,6 +46,9 @@ public class ColumnService {
         // 4. Lưu Database
         ColumnEntity savedColumn = columnRepository.save(column);
 
+        // PHÁT TÍN HIỆU WEBSOCKET
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
+
         // 5. Trả về DTO
         ColumnDTO response = new ColumnDTO();
         response.setId(savedColumn.getId());
@@ -64,6 +67,10 @@ public class ColumnService {
         column.setName(request.getName());
         ColumnEntity updatedColumn = columnRepository.save(column);
 
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = column.getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
+
         ColumnDTO response = new ColumnDTO();
         response.setId(updatedColumn.getId());
         response.setName(updatedColumn.getName());
@@ -78,6 +85,10 @@ public class ColumnService {
 
         column.setDeletedAt(OffsetDateTime.now());
         columnRepository.save(column);
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = column.getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
     }
 
     @Transactional
@@ -101,5 +112,8 @@ public class ColumnService {
 
         // 3. Lưu lại vào DB.
         columnRepository.saveAll(existingColumns);
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
     }
 }

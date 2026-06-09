@@ -8,6 +8,7 @@ import com.example.doantotnghiep.repository.CommentRepository;
 import com.example.doantotnghiep.repository.TaskRepository;
 import com.example.doantotnghiep.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CommentService {
 
+    private final SimpMessagingTemplate messagingTemplate;
     private final LogHelperService logHelper;
     private final CommentRepository commentRepository;
     private final TaskRepository taskRepository;
@@ -48,6 +50,10 @@ public class CommentService {
                 "ADD_COMMENT",
                 Map.of("comment_content", content) // Lưu nội dung comment vào cột JSON
         );
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = comment.getTask().getColumn().getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
 
         return new CommentResponseDTO(
                 savedComment.getId(),
@@ -81,5 +87,9 @@ public class CommentService {
                 "DELETE_COMMENT",
                 Map.of("message", "đã xóa một bình luận")
         );
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = comment.getTask().getColumn().getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
     }
 }

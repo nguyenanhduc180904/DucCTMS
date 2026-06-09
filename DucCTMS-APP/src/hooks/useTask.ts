@@ -65,7 +65,6 @@ export const useUpdateTask = (workspaceId: string | undefined, projectId: string
             message.success('Cập nhật nhiệm vụ thành công!');
             queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
             queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId, taskId] });
-            queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
             queryClient.invalidateQueries({ queryKey: ['taskLogs', workspaceId, projectId, taskId] });
         }
     });

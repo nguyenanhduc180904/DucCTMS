@@ -31,6 +31,9 @@ import TaskDetailDrawer from './TaskDetailDrawer';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import { useQueryClient } from '@tanstack/react-query';
 
 dayjs.extend(relativeTime);
 dayjs.locale('vi');
@@ -74,6 +77,7 @@ export interface Column {
 const ProjectDetail = () => {
     const navigate = useNavigate();
     const { workspaceId, projectId } = useParams();
+    const queryClient = useQueryClient();
 
     const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState<boolean>(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -91,6 +95,40 @@ const ProjectDetail = () => {
     const { mutate: deleteTask } = useDeleteTask(workspaceId, projectId);
     const { mutate: reorderColumnsMutation } = useReorderColumns(workspaceId, projectId);
     const { mutate: reorderTasksMutation } = useReorderTasks(workspaceId, projectId);
+
+    // THIẾT LẬP WEBSOCKET
+    useEffect(() => {
+        if (!projectId) return;
+
+        // Trỏ tới đúng đường dẫn "/ws" đã cấu hình ở Spring Boot
+        const socket = new SockJS('http://localhost:8080/ws');
+        const stompClient = new Client({
+            webSocketFactory: () => socket,
+            onConnect: () => {
+                console.log('Đã kết nối WebSocket tới Project:', projectId);
+
+                // Subscribe (Lắng nghe) đúng kênh của dự án này
+                stompClient.subscribe(`/topic/projects/${projectId}`, (message) => {
+                    if (message.body === 'BOARD_UPDATED') {
+                        // Kích hoạt React Query tải lại ngầm dữ liệu
+                        queryClient.invalidateQueries({ queryKey: ['projectBoard', workspaceId, projectId] });
+                        queryClient.invalidateQueries({ queryKey: ['taskDetail', workspaceId, projectId] });
+                        queryClient.invalidateQueries({ queryKey: ['taskLogs', workspaceId, projectId] });
+                    }
+                });
+            },
+            onStompError: (frame) => {
+                console.error('Lỗi WebSocket: ' + frame.headers['message']);
+            }
+        });
+
+        stompClient.activate();
+
+        // Dọn dẹp (Ngắt kết nối) khi người dùng rời khỏi trang
+        return () => {
+            stompClient.deactivate();
+        };
+    }, [projectId, workspaceId, queryClient]);
 
     // ĐỒNG BỘ DỮ LIỆU TỪ SERVER VÀO LOCAL STATE
     useEffect(() => {

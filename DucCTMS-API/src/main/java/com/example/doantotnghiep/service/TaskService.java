@@ -6,6 +6,7 @@ import com.example.doantotnghiep.dto.response.*;
 import com.example.doantotnghiep.entity.*;
 import com.example.doantotnghiep.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TaskService {
 
+    private final SimpMessagingTemplate messagingTemplate;
     private final LogHelperService logHelper;
     private final TaskRepository taskRepository;
     private final ColumnRepository columnRepository;
@@ -59,13 +61,16 @@ public class TaskService {
 
         logHelper.logActivity(
                 savedTask.getColumn().getProject().getId(), // projectId
-                savedTask.getId(),                          // taskId
-                "CREATE_TASK",                              // action
+                savedTask.getId(), // taskId
+                "CREATE_TASK", // action
                 Map.of(
                         "title", savedTask.getTitle(),
-                        "priority", savedTask.getPriority()
-                )                                           // details (JSON)
+                        "priority", savedTask.getPriority()) // details (JSON)
         );
+
+        // PHÁT TÍN HIỆU WEBSOCKET (THÊM MỚI)
+        Long projectId = savedTask.getColumn().getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
 
         // 5. Build DTO trả về cho React hiển thị ngay lập tức
         TaskDTO dto = new TaskDTO();
@@ -86,7 +91,7 @@ public class TaskService {
         return dto;
     }
 
-    //  Sửa Task
+    // Sửa Task
     @Transactional
     public TaskDTO updateTask(Long taskId, TaskRequestDTO request) {
         Task task = taskRepository.findById(taskId)
@@ -108,8 +113,11 @@ public class TaskService {
                 task.getColumn().getProject().getId(),
                 taskId,
                 "UPDATE_TASK",
-                Map.of("message", "đã cập nhật thông tin nhiệm vụ")
-        );
+                Map.of("message", "đã cập nhật thông tin nhiệm vụ"));
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = updatedTask.getColumn().getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
 
         // Map sang DTO trả về (giản lược)
         TaskDTO dto = new TaskDTO();
@@ -119,7 +127,7 @@ public class TaskService {
         return dto;
     }
 
-    //  Xóa mềm Task
+    // Xóa mềm Task
     @Transactional
     public void deleteTask(Long taskId) {
         Task task = taskRepository.findById(taskId)
@@ -127,6 +135,10 @@ public class TaskService {
 
         task.setDeletedAt(OffsetDateTime.now()); // Xóa mềm
         taskRepository.save(task);
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = task.getColumn().getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
     }
 
     @Transactional
@@ -165,15 +177,18 @@ public class TaskService {
                             "MOVE_TASK",
                             Map.of(
                                     "from_column", oldColumnName,
-                                    "to_column", newColumn.getName()
-                            )
-                    );
+                                    "to_column", newColumn.getName()));
                 }
             }
         }
 
         // 4. Lưu lại vào DB
         taskRepository.saveAll(tasksToUpdate);
+
+        if (!tasksToUpdate.isEmpty()) {
+            Long projectId = tasksToUpdate.get(0).getColumn().getProject().getId();
+            messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -222,8 +237,7 @@ public class TaskService {
                         c.getId(),
                         c.getUser().getFullName(), // Lấy tên người bình luận
                         c.getContent(),
-                        c.getCreatedAt() != null ? c.getCreatedAt().toString() : ""
-                ))
+                        c.getCreatedAt() != null ? c.getCreatedAt().toString() : ""))
                 .collect(Collectors.toList()));
 
         return dto;
@@ -253,6 +267,10 @@ public class TaskService {
                 "ADD_ASSIGNEE",
                 Map.of("user_name", user.getFullName()) // user là người vừa được gán
         );
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = task.getColumn().getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
     }
 
     @Transactional
@@ -280,6 +298,10 @@ public class TaskService {
                 "REMOVE_ASSIGNEE",
                 Map.of("user_name", user.getFullName()) // user là người vừa bị gỡ
         );
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = task.getColumn().getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
     }
 
     @Transactional
@@ -299,7 +321,8 @@ public class TaskService {
             throw new RuntimeException("Nhiệm vụ này đã được gán nhãn này từ trước!");
         }
 
-        // 4. Thực hiện gán nhãn (Hibernate sẽ tự động chèn 1 bản ghi vào bảng task_labels)
+        // 4. Thực hiện gán nhãn (Hibernate sẽ tự động chèn 1 bản ghi vào bảng
+        // task_labels)
         task.getLabels().add(label);
         taskRepository.save(task);
 
@@ -307,8 +330,11 @@ public class TaskService {
                 task.getColumn().getProject().getId(),
                 taskId,
                 "ADD_LABEL",
-                Map.of("label_name", label.getName(), "label_color", label.getColor())
-        );
+                Map.of("label_name", label.getName(), "label_color", label.getColor()));
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = task.getColumn().getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
     }
 
     @Transactional
@@ -329,14 +355,18 @@ public class TaskService {
             throw new RuntimeException("Nhiệm vụ này hiện chưa được gán nhãn này!");
         }
 
-        // 3. Lưu lại thay đổi (Hibernate sẽ tự động xóa bản ghi tương ứng trong bảng task_labels)
+        // 3. Lưu lại thay đổi (Hibernate sẽ tự động xóa bản ghi tương ứng trong bảng
+        // task_labels)
         taskRepository.save(task);
         logHelper.logActivity(
                 task.getColumn().getProject().getId(),
                 taskId,
                 "REMOVE_LABEL",
-                Map.of("label_name", label.getName(), "label_color", label.getColor())
-        );
+                Map.of("label_name", label.getName(), "label_color", label.getColor()));
+
+        // PHÁT TÍN HIỆU WEBSOCKET
+        Long projectId = task.getColumn().getProject().getId();
+        messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
 
     }
 
@@ -355,7 +385,6 @@ public class TaskService {
                 log.getUser() != null ? log.getUser().getFullName() : "Hệ thống",
                 log.getAction(),
                 log.getDetails(),
-                log.getCreatedAt().toString()
-        )).collect(Collectors.toList());
+                log.getCreatedAt().toString())).collect(Collectors.toList());
     }
 }

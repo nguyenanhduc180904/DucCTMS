@@ -283,8 +283,7 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                             </div>
                         ) : (
                             <div style={{ marginTop: 8 }}>
-                                <TextArea placeholder="Thêm mô tả chi tiết cho nhiệm vụ này..." rows={3} />
-                                <Button type="primary" style={{ marginTop: 8 }}>Lưu mô tả</Button>
+                                <TextArea disabled placeholder="Không có mô tả" rows={3} />
                             </div>
                         )}
                     </div>
