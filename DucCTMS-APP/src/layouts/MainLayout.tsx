@@ -5,7 +5,6 @@ import {
     Menu,
     Button,
     Avatar,
-    Badge,
     Dropdown,
     Space,
     Typography,
@@ -18,7 +17,6 @@ import {
     MenuUnfoldOutlined,
     DashboardOutlined,
     ProjectOutlined,
-    BellOutlined,
     UserOutlined,
     LogoutOutlined,
     TeamOutlined,
@@ -34,6 +32,7 @@ import { useLogout } from '../hooks/useAuth';
 import { useDeleteWorkspace, useWorkspaces } from '../hooks/useWorkspaces';
 import { useMyProfile } from '../hooks/useUser';
 import WorkspaceModal from '../components/Workspace/WorkspaceModal';
+import NotificationDropdown from '../components/Notification';
 
 const BASE_URL = "http://localhost:8080";
 const { Header, Sider, Content } = Layout;
@@ -265,9 +264,7 @@ const MainLayout = () => {
                     />
 
                     <Space size="large">
-                        <Badge count={3} size="small">
-                            <Button type="text" icon={<BellOutlined style={{ fontSize: 20 }} />} />
-                        </Badge>
+                        <NotificationDropdown />
 
                         <Dropdown menu={{ items: userActionItems }} placement="bottomRight">
                             <Space style={{ cursor: 'pointer' }}>

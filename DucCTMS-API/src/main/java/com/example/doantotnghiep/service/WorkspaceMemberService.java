@@ -10,6 +10,7 @@ import com.example.doantotnghiep.repository.UserRepository;
 import com.example.doantotnghiep.repository.WorkspaceMemberRepository;
 import com.example.doantotnghiep.repository.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class WorkspaceMemberService {
     private final WorkspaceMemberRepository memberRepository;
     private final WorkspaceRepository workspaceRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public List<WorkspaceMemberResponseDTO> getMembers(Long workspaceId) {
         List<WorkspaceMember> entities = memberRepository.findAllByWorkspaceId(workspaceId);
@@ -62,6 +64,18 @@ public class WorkspaceMemberService {
                 .build();
 
         memberRepository.save(newMember);
+
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        userRepository.findByUsername(username).ifPresent(actor -> {
+            notificationService.createNotification(
+                user,
+                actor,
+                "WORKSPACE_INVITE",
+                workspace.getId(),
+                "WORKSPACE",
+                "đã thêm bạn vào không gian làm việc \"" + workspace.getName() + "\""
+            );
+        });
     }
 
     @Transactional

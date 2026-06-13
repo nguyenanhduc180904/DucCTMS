@@ -4,7 +4,8 @@ import {
     Tag, Card, Badge, Space, Typography,
     Input, Spin,
     Modal,
-    Dropdown
+    Dropdown,
+    Row, Col
 } from 'antd';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 
@@ -270,41 +271,45 @@ const ProjectDetail = () => {
         <Layout style={{ minHeight: '100vh', background: '#f5f7f9' }}>
             {/* HEADER SECTION */}
             <Header style={{ background: '#fff', padding: '16px 24px', height: 'auto', borderBottom: '1px solid #f0f0f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-                    <Space size="middle" align="center">
-                        <Button
-                            type="text"
-                            icon={<ArrowLeftOutlined />}
-                            onClick={() => navigate(`/workspace/${workspaceId}/projects`)}
-                            style={{ fontSize: '18px', width: 32, height: 32, padding: 0 }}
-                        />
-                        <Title level={3} style={{ margin: 0 }}>
-                            {projectInfo?.name || <Spin size="small" />}
-                        </Title>
-                    </Space>
-                    <Space>
-                        <Input prefix={<SearchOutlined />} placeholder="Tìm task..." />
-                        <Button
-                            icon={<TagsOutlined />}
-                            onClick={() => navigate(`/workspace/${workspaceId}/projects/${projectId}/labels`)}                        >
-                            Quản lý Nhãn
-                        </Button>
-                        <Button
-                            type="primary"
-                            icon={<TeamOutlined />}
-                            onClick={() => navigate(`/workspace/${workspaceId}/projects/${projectId}/members`)}
-                        >
-                            Quản lý thành viên
-                        </Button>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => setIsAddColumnModalOpen(true)}
-                        >
-                            Thêm cột
-                        </Button>
-                    </Space>
-                </div>
+                <Row gutter={[16, 16]} justify="space-between" align="middle" style={{ marginTop: 12 }}>
+                    <Col xs={24} sm={24} md={8}>
+                        <Space size="middle" align="center">
+                            <Button
+                                type="text"
+                                icon={<ArrowLeftOutlined />}
+                                onClick={() => navigate(`/workspace/${workspaceId}/projects`)}
+                                style={{ fontSize: '18px', width: 32, height: 32, padding: 0 }}
+                            />
+                            <Title level={3} style={{ margin: 0 }}>
+                                {projectInfo?.name || <Spin size="small" />}
+                            </Title>
+                        </Space>
+                    </Col>
+                    <Col xs={24} sm={24} md={16} style={{ textAlign: 'right' }}>
+                        <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
+                            <Input prefix={<SearchOutlined />} placeholder="Tìm task..." />
+                            <Button
+                                icon={<TagsOutlined />}
+                                onClick={() => navigate(`/workspace/${workspaceId}/projects/${projectId}/labels`)}                        >
+                                Quản lý Nhãn
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<TeamOutlined />}
+                                onClick={() => navigate(`/workspace/${workspaceId}/projects/${projectId}/members`)}
+                            >
+                                Quản lý thành viên
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => setIsAddColumnModalOpen(true)}
+                            >
+                                Thêm cột
+                            </Button>
+                        </Space>
+                    </Col>
+                </Row>
             </Header>
 
             {/* 3. KANBAN BOARD SECTION */}

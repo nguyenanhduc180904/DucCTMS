@@ -28,6 +28,7 @@ public class TaskService {
     private final UserRepository userRepository;
     private final LabelRepository labelRepository;
     private final ActivityLogRepository activityLogRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public TaskDTO createTask(TaskRequestDTO request) {
@@ -178,6 +179,22 @@ public class TaskService {
                             Map.of(
                                     "from_column", oldColumnName,
                                     "to_column", newColumn.getName()));
+                    
+                    // GỬI THÔNG BÁO CHO CÁC THÀNH VIÊN ĐƯỢC GÁN
+                    String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+                    User actor = userRepository.findByUsername(username).orElse(null);
+                    if (actor != null && task.getAssignees() != null) {
+                        task.getAssignees().forEach(assignee -> {
+                            notificationService.createNotification(
+                                assignee,
+                                actor,
+                                "TASK_MOVED",
+                                task.getId(),
+                                "TASK",
+                                "đã chuyển nhiệm vụ \"" + task.getTitle() + "\" sang cột \"" + newColumn.getName() + "\""
+                            );
+                        });
+                    }
                 }
             }
         }
@@ -271,6 +288,19 @@ public class TaskService {
         // PHÁT TÍN HIỆU WEBSOCKET
         Long projectId = task.getColumn().getProject().getId();
         messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
+
+        // GỬI THÔNG BÁO
+        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        userRepository.findByUsername(username).ifPresent(actor -> {
+            notificationService.createNotification(
+                user, // user is the assignee
+                actor,
+                "TASK_ASSIGNED",
+                task.getId(),
+                "TASK",
+                "đã giao cho bạn nhiệm vụ \"" + task.getTitle() + "\""
+            );
+        });
     }
 
     @Transactional

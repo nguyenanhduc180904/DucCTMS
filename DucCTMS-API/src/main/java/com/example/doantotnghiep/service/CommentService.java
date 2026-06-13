@@ -25,6 +25,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public CommentResponseDTO addComment(Long taskId, String content) {
@@ -54,6 +55,20 @@ public class CommentService {
         // PHÁT TÍN HIỆU WEBSOCKET
         Long projectId = comment.getTask().getColumn().getProject().getId();
         messagingTemplate.convertAndSend("/topic/projects/" + projectId, "BOARD_UPDATED");
+
+        // GỬI THÔNG BÁO CHO CÁC THÀNH VIÊN ĐƯỢC GÁN VÀO TASK
+        if (task.getAssignees() != null) {
+            task.getAssignees().forEach(assignee -> {
+                notificationService.createNotification(
+                    assignee,
+                    currentUser,
+                    "TASK_COMMENT",
+                    task.getId(),
+                    "TASK",
+                    "đã bình luận trong nhiệm vụ \"" + task.getTitle() + "\""
+                );
+            });
+        }
 
         return new CommentResponseDTO(
                 savedComment.getId(),

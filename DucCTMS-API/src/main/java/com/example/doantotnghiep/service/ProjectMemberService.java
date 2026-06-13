@@ -8,6 +8,7 @@ import com.example.doantotnghiep.repository.ProjectRepository;
 import com.example.doantotnghiep.repository.UserRepository;
 import com.example.doantotnghiep.repository.WorkspaceMemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class ProjectMemberService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final NotificationService notificationService;
 
     public List<ProjectMemberResponseDTO> getProjectMembers(Long workspaceId, Long projectId) {
         Project project = projectRepository.findByIdAndWorkspaceIdAndDeletedAtIsNull(projectId, workspaceId)
@@ -68,6 +70,18 @@ public class ProjectMemberService {
                 .build();
 
         projectMemberRepository.save(newMember);
+
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        userRepository.findByUsername(username).ifPresent(actor -> {
+            notificationService.createNotification(
+                user,
+                actor,
+                "PROJECT_INVITE",
+                project.getId(),
+                "PROJECT",
+                "đã thêm bạn vào dự án \"" + project.getName() + "\""
+            );
+        });
     }
 
     @Transactional
