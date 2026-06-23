@@ -4,6 +4,7 @@ import { PlusOutlined, ProjectOutlined, SearchOutlined, EditOutlined, DeleteOutl
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCreateProject, useDeleteProject, useProjects, useUpdateProject } from '../../hooks/useProject';
 import ProjectModal from './ProjectModal';
+import RequireRole from '../Role/RequireRole';
 
 const { Title, Text } = Typography;
 const { Paragraph } = Typography;
@@ -67,9 +68,11 @@ const ProjectsPage: React.FC = () => {
                     <Title level={3} style={{ marginBottom: 4 }}>Dự án của tôi</Title>
                     <Text type="secondary">Các dự án bạn đang tham gia trong không gian làm việc này.</Text>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} size="large" onClick={handleOpenCreate}>
-                    Tạo dự án
-                </Button>
+                <RequireRole allowedRoles={['OWNER', 'ADMIN']}>
+                    <Button type="primary" icon={<PlusOutlined />} size="large" onClick={handleOpenCreate}>
+                        Tạo dự án
+                    </Button>
+                </RequireRole>
             </div>
 
             {/* Thanh tìm kiếm */}
@@ -97,21 +100,25 @@ const ProjectsPage: React.FC = () => {
                                     height: '100%'
                                 }}
                                 actions={[
-                                    <Tooltip title="Chỉnh sửa" key="edit">
-                                        <EditOutlined key="edit" onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleOpenEdit(project);
-                                        }} />,
-                                    </Tooltip>,
-                                    <Tooltip title="Xóa" key="delete">
-                                        <DeleteOutlined
-                                            style={{ color: '#ff4d4f' }}
-                                            onClick={(e) => {
+                                    <RequireRole allowedRoles={['OWNER', 'ADMIN']} key="edit">
+                                        <Tooltip title="Chỉnh sửa">
+                                            <EditOutlined onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleDelete(project);
-                                            }}
-                                        />
-                                    </Tooltip>,
+                                                handleOpenEdit(project);
+                                            }} />
+                                        </Tooltip>
+                                    </RequireRole>,
+                                    <RequireRole allowedRoles={['OWNER', 'ADMIN']} key="delete">
+                                        <Tooltip title="Xóa">
+                                            <DeleteOutlined
+                                                style={{ color: '#ff4d4f' }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(project);
+                                                }}
+                                            />
+                                        </Tooltip>
+                                    </RequireRole>,
                                 ]}
                             >
                                 <div

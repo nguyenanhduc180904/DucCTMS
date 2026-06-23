@@ -3,7 +3,7 @@ import './App.css'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Login from './components/Auth/Login';
 import MainLayout from './layouts/MainLayout';
-import Dashboard from './components/Dashboard';
+// import Dashboard from './components/Dashboard';
 import ProtectedRoute from './routes/ProtectedRoute';
 import Register from './components/Auth/Register';
 import UserProfile from './components/UserProfile';
@@ -22,7 +22,7 @@ const RootRedirect = () => {
   if (isLoading) return null;
 
   if (workspaces && workspaces.length > 0) {
-    return <Navigate to={`/workspace/${workspaces[0].id}/dashboard`} replace />;
+    return <Navigate to={`/workspace/${workspaces[0].id}/projects`} replace />;
   }
 
   return <Navigate to="no-workspace" replace />;
@@ -34,9 +34,9 @@ function App() {
         <Route element={<ProtectedRoute />}>
 
           <Route path="workspace/:workspaceId" element={<MainLayout />}>
-            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route index element={<Navigate to="projects" replace />} />
             <Route path="members" element={<MembersPage />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            {/* <Route path="dashboard" element={<Dashboard />} /> */}
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:projectId/members" element={<ProjectMembersPage />} />
             <Route path="projects/:projectId/labels" element={<ProjectLabelsPage />} />

@@ -4,18 +4,23 @@ import { UserAddOutlined, DeleteOutlined, SearchOutlined, UserOutlined, Exclamat
 import { useParams } from 'react-router-dom';
 import dayjs from 'dayjs'; // Cài đặt: npm install dayjs
 import { useInviteMember, useMembers, useRemoveMember, useUpdateRole, type Member } from '../../hooks/useWorkspaceMember';
-import { useWorkspaces } from '../../hooks/useWorkspaces';
 import { useMyProfile } from '../../hooks/useUser';
+import RequireRole from '../Role/RequireRole';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { confirm } = Modal;
 const BASE_URL = "http://localhost:8080";
 
+const roleTranslations: Record<string, string> = {
+    'OWNER': 'Chủ sở hữu',
+    'ADMIN': 'Quản trị viên',
+    'MEMBER': 'Thành viên'
+};
+
 const MembersPage: React.FC = () => {
     const { workspaceId } = useParams();
     const { data: members, isLoading, isError } = useMembers(workspaceId);
-    const { data: workspaces } = useWorkspaces();
     const { data: userData } = useMyProfile();
 
     const [searchText, setSearchText] = useState('');
@@ -27,10 +32,6 @@ const MembersPage: React.FC = () => {
         member.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
         member.email.toLowerCase().includes(searchText.toLowerCase())
     );
-
-    const activeWorkspace = workspaces?.find(w => w.id === Number(workspaceId));
-    const myRole = activeWorkspace?.role;
-    const canManage = myRole === 'OWNER' || myRole === 'ADMIN';
 
     const { mutate: removeMember } = useRemoveMember(workspaceId);
     const showDeleteConfirm = (record: Member) => {
@@ -74,24 +75,33 @@ const MembersPage: React.FC = () => {
                 const isTargetOwner = record.role === 'OWNER';
                 const isMyself = record.userId === userData?.id;
 
-                if (isTargetOwner || isMyself || !canManage) {
+                const displayTag = () => {
                     let color = 'blue';
                     if (record.role === 'OWNER') color = 'gold';
                     if (record.role === 'ADMIN') color = 'magenta';
-                    return <Tag color={color}>{record.role}</Tag>;
+                    return <Tag color={color}>{roleTranslations[record.role] || record.role}</Tag>;
+                };
+
+                if (isTargetOwner || isMyself) {
+                    return displayTag();
                 }
 
                 return (
-                    <Select
-                        defaultValue={record.role}
-                        size="small"
-                        style={{ width: 100 }}
-                        loading={isUpdating}
-                        onChange={(newRole) => updateRole({ userId: record.userId, role: newRole })}
+                    <RequireRole
+                        allowedRoles={['OWNER', 'ADMIN']}
+                        fallback={displayTag()}
                     >
-                        <Option value="ADMIN">ADMIN</Option>
-                        <Option value="MEMBER">MEMBER</Option>
-                    </Select>
+                        <Select
+                            defaultValue={record.role}
+                            size="small"
+                            style={{ width: 130 }}
+                            loading={isUpdating}
+                            onChange={(newRole) => updateRole({ userId: record.userId, role: newRole })}
+                        >
+                            <Option value="ADMIN">Quản trị viên</Option>
+                            <Option value="MEMBER">Thành viên</Option>
+                        </Select>
+                    </RequireRole>
                 );
             },
         },
@@ -112,8 +122,15 @@ const MembersPage: React.FC = () => {
 
                 return (
                     <Space size="middle">
-                        {canManage && !isTargetOwner && !isSearchingMyself ? (
-                            <>
+                        <RequireRole
+                            allowedRoles={['OWNER', 'ADMIN']}
+                            fallback={
+                                <Text type="secondary" italic style={{ fontSize: '12px' }}>
+                                    {isTargetOwner ? 'Chủ sở hữu' : isSearchingMyself ? 'Bạn' : 'Không có quyền'}
+                                </Text>
+                            }
+                        >
+                            {!isTargetOwner && !isSearchingMyself ? (
                                 <Tooltip title="Gỡ khỏi workspace">
                                     <Button
                                         type="text"
@@ -122,12 +139,12 @@ const MembersPage: React.FC = () => {
                                         onClick={() => showDeleteConfirm(record)}
                                     />
                                 </Tooltip>
-                            </>
-                        ) : (
-                            <Text type="secondary" italic style={{ fontSize: '12px' }}>
-                                {isTargetOwner ? 'Chủ sở hữu' : isSearchingMyself ? 'Bạn' : 'Không có quyền'}
-                            </Text>
-                        )}
+                            ) : (
+                                <Text type="secondary" italic style={{ fontSize: '12px' }}>
+                                    {isTargetOwner ? 'Chủ sở hữu' : 'Bạn'}
+                                </Text>
+                            )}
+                        </RequireRole>
                     </Space>
                 );
             },
@@ -160,7 +177,7 @@ const MembersPage: React.FC = () => {
                 <Text type="secondary">Thêm thành viên mới và quản lý quyền hạn trong không gian làm việc này.</Text>
             </div>
 
-            {canManage && (
+            <RequireRole allowedRoles={['OWNER', 'ADMIN']}>
                 <Card style={{ marginBottom: 24, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
                     <Row gutter={16} align="middle">
                         <Col xs={24} md={12}>
@@ -179,8 +196,8 @@ const MembersPage: React.FC = () => {
                                 onChange={(value) => setInviteRole(value)}
                                 disabled={isInviting}
                             >
-                                <Option value="ADMIN">Quản trị viên (Admin)</Option>
-                                <Option value="MEMBER">Thành viên (Member)</Option>
+                                <Option value="ADMIN">Quản trị viên</Option>
+                                <Option value="MEMBER">Thành viên</Option>
                             </Select>
                         </Col>
                         <Col xs={10} md={6}>
@@ -196,7 +213,7 @@ const MembersPage: React.FC = () => {
                         </Col>
                     </Row>
                 </Card>
-            )}
+            </RequireRole>
 
 
 

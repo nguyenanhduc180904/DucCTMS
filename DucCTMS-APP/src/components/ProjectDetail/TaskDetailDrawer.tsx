@@ -36,10 +36,11 @@ interface TaskDetailDrawerProps {
     projectId: string | undefined;
     onEditTask: () => void;
     onDeleteTask: () => void;
+    canManageProject: boolean;
 }
 
 const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
-    open, onClose, taskId, workspaceId, projectId, onEditTask, onDeleteTask
+    open, onClose, taskId, workspaceId, projectId, onEditTask, onDeleteTask, canManageProject
 }) => {
     const [comment, setComment] = useState('');
 
@@ -129,14 +130,16 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 label: 'Sửa nhiệm vụ',
                 onClick: onEditTask,
             },
-            { type: 'divider' as const },
-            {
-                key: 'delete',
-                icon: <DeleteOutlined />,
-                label: 'Xóa nhiệm vụ',
-                danger: true,
-                onClick: onDeleteTask,
-            },
+            ...(canManageProject ? [
+                { type: 'divider' as const },
+                {
+                    key: 'delete',
+                    icon: <DeleteOutlined />,
+                    label: 'Xóa nhiệm vụ',
+                    danger: true,
+                    onClick: onDeleteTask,
+                }
+            ] : []),
         ]
     };
 
@@ -164,9 +167,11 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
             open={open}
             destroyOnClose
             extra={
-                <Dropdown menu={taskMenu} trigger={['click']} placement="bottomRight">
-                    <Button type="text" icon={<MoreOutlined style={{ fontSize: 20 }} />} />
-                </Dropdown>
+                canManageProject ? (
+                    <Dropdown menu={taskMenu} trigger={['click']} placement="bottomRight">
+                        <Button type="text" icon={<MoreOutlined style={{ fontSize: 20 }} />} />
+                    </Dropdown>
+                ) : null
             }
         >
             {isLoading ? (

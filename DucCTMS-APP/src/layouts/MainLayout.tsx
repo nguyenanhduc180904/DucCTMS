@@ -15,16 +15,12 @@ import {
 import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
-    DashboardOutlined,
     ProjectOutlined,
     UserOutlined,
     LogoutOutlined,
     TeamOutlined,
     PlusOutlined,
     SwapOutlined,
-    CheckSquareOutlined,
-    HistoryOutlined,
-    SettingOutlined,
     EditOutlined,
     DeleteOutlined,
 } from '@ant-design/icons';
@@ -63,7 +59,7 @@ const MainLayout = () => {
     const activeWorkspace = workspaces.find(w => w.id === Number(workspaceId)) || workspaces[0];
 
     const handleWorkspaceChange = (id: number) => {
-        navigate(`/workspace/${id}/dashboard`);
+        navigate(`/workspace/${id}/projects`);
     };
 
     const handleOpenCreate = () => {
@@ -105,7 +101,7 @@ const MainLayout = () => {
                 label: (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                         <span>{w.name}</span>
-                        {w.role !== 'MEMBER' && (
+                        {w.role === 'OWNER' && (
                             <Space onClick={(e) => e.stopPropagation()}>
                                 <EditOutlined
                                     style={{ color: '#1677ff', fontSize: '14px' }}
@@ -134,11 +130,11 @@ const MainLayout = () => {
     };
 
     const menuItems = [
-        {
-            key: `/workspace/${activeWorkspace?.id}/dashboard`,
-            icon: <DashboardOutlined />,
-            label: 'Tổng quan'
-        },
+        // {
+        //     key: `/workspace/${activeWorkspace?.id}/dashboard`,
+        //     icon: <DashboardOutlined />,
+        //     label: 'Tổng quan'
+        // },
         {
             key: `/workspace/${activeWorkspace?.id}/members`,
             icon: <TeamOutlined />,
@@ -149,21 +145,21 @@ const MainLayout = () => {
             icon: <ProjectOutlined />,
             label: 'Dự án (Boards)'
         },
-        {
-            key: `/workspace/${activeWorkspace?.id}/my-tasks`,
-            icon: <CheckSquareOutlined />,
-            label: 'Việc của tôi'
-        },
-        ...(activeWorkspace?.role !== 'MEMBER' ? [{
-            key: `/workspace/${activeWorkspace?.id}/settings`,
-            icon: <SettingOutlined />,
-            label: 'Cài đặt hệ thống'
-        }] : []),
-        {
-            key: `/workspace/${activeWorkspace?.id}/activities`,
-            icon: <HistoryOutlined />,
-            label: 'Nhật ký hoạt động'
-        },
+        // {
+        //     key: `/workspace/${activeWorkspace?.id}/my-tasks`,
+        //     icon: <CheckSquareOutlined />,
+        //     label: 'Việc của tôi'
+        // },
+        // ...(activeWorkspace?.role !== 'MEMBER' ? [{
+        //     key: `/workspace/${activeWorkspace?.id}/settings`,
+        //     icon: <SettingOutlined />,
+        //     label: 'Cài đặt hệ thống'
+        // }] : []),
+        // {
+        //     key: `/workspace/${activeWorkspace?.id}/activities`,
+        //     icon: <HistoryOutlined />,
+        //     label: 'Nhật ký hoạt động'
+        // },
     ];
 
     const userActionItems = [

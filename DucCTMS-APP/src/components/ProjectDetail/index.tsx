@@ -35,6 +35,10 @@ import 'dayjs/locale/vi';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useQueryClient } from '@tanstack/react-query';
+import RequireRole from '../Role/RequireRole';
+import { useMyProfile } from '../../hooks/useUser';
+import { useProjectMembers } from '../../hooks/useProjectMember';
+import { useMembers } from '../../hooks/useWorkspaceMember';
 
 dayjs.extend(relativeTime);
 dayjs.locale('vi');
@@ -96,6 +100,14 @@ const ProjectDetail = () => {
     const { mutate: deleteTask } = useDeleteTask(workspaceId, projectId);
     const { mutate: reorderColumnsMutation } = useReorderColumns(workspaceId, projectId);
     const { mutate: reorderTasksMutation } = useReorderTasks(workspaceId, projectId);
+
+    const { data: userData } = useMyProfile();
+    const { data: projectMembers } = useProjectMembers(workspaceId, projectId);
+    const { data: workspaceMembers } = useMembers(workspaceId);
+
+    const myWorkspaceRole = workspaceMembers?.find(m => m.userId === userData?.id)?.role;
+    const isProjectManager = projectMembers?.find(m => m.userId === userData?.id)?.role === 'MANAGER';
+    const canManageProject = myWorkspaceRole === 'OWNER' || myWorkspaceRole === 'ADMIN' || isProjectManager;
 
     // THIẾT LẬP WEBSOCKET
     useEffect(() => {
@@ -300,13 +312,15 @@ const ProjectDetail = () => {
                             >
                                 Quản lý thành viên
                             </Button>
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={() => setIsAddColumnModalOpen(true)}
-                            >
-                                Thêm cột
-                            </Button>
+                            <RequireRole allowedRoles={['OWNER', 'ADMIN']} forceAllow={isProjectManager}>
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => setIsAddColumnModalOpen(true)}
+                                >
+                                    Thêm cột
+                                </Button>
+                            </RequireRole>
                         </Space>
                     </Col>
                 </Row>
@@ -346,9 +360,11 @@ const ProjectDetail = () => {
                                                 style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, cursor: 'grab' }}
                                             >
                                                 <Text strong>{col.name} <Badge count={col.tasks.length} showZero color="#bfbfbf" /></Text>
-                                                <Dropdown menu={getColumnMenu(col)} trigger={['click']} placement="bottomRight">
-                                                    <Button type="text" icon={<MoreOutlined />} size="small" onClick={(e) => e.stopPropagation()} />
-                                                </Dropdown>
+                                                <RequireRole allowedRoles={['OWNER', 'ADMIN']} forceAllow={isProjectManager}>
+                                                    <Dropdown menu={getColumnMenu(col)} trigger={['click']} placement="bottomRight">
+                                                        <Button type="text" icon={<MoreOutlined />} size="small" onClick={(e) => e.stopPropagation()} />
+                                                    </Dropdown>
+                                                </RequireRole>
                                             </div>
 
                                             {/* Droppable cho Tasks bên trong cột (type="task" mặc định) */}
@@ -461,6 +477,7 @@ const ProjectDetail = () => {
                 projectId={projectId}
                 onEditTask={() => setIsEditTaskModalOpen(true)}
                 onDeleteTask={() => handleDeleteTask(selectedTask!)}
+                canManageProject={canManageProject}
             />
 
             <AddColumnModal

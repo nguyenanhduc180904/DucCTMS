@@ -74,6 +74,19 @@ public class ProjectService {
         member.setJoinedAt(OffsetDateTime.now());
 
         projectMemberRepository.save(member);
+
+        // Thêm Owner của Workspace vào làm Quản lý dự án nếu họ không phải là người tạo
+        if (!currentUser.getId().equals(workspace.getOwner().getId())) {
+            ProjectMemberId ownerMemberId = new ProjectMemberId(savedProject.getId(), workspace.getOwner().getId());
+            ProjectMember ownerMember = new ProjectMember();
+            ownerMember.setId(ownerMemberId);
+            ownerMember.setProject(savedProject);
+            ownerMember.setUser(workspace.getOwner());
+            ownerMember.setRole(ProjectMember.Role.MANAGER);
+            ownerMember.setJoinedAt(OffsetDateTime.now());
+
+            projectMemberRepository.save(ownerMember);
+        }
     }
 
     @Transactional
