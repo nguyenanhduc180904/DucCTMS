@@ -28,6 +28,7 @@ public class WorkspaceMember {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Builder.Default
     private OffsetDateTime joinedAt = OffsetDateTime.now();
 
     public enum Role {

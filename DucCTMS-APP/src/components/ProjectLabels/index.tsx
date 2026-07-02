@@ -186,6 +186,7 @@ const ProjectLabelsPage: React.FC = () => {
                         dataSource={filteredLabels}
                         rowKey="id"
                         pagination={{ pageSize: 10 }}
+                        locale={{ emptyText: 'Không có dữ liệu' }}
                     />
                 )}
             </Card>

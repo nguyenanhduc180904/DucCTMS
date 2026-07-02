@@ -39,7 +39,7 @@ const MainLayout = () => {
     const [editingWorkspace, setEditingWorkspace] = useState<any>(null);
 
     const { logout } = useLogout();
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(true);
     const location = useLocation();
     const { token: { colorBgContainer, borderRadiusLG } } = theme.useToken();
 

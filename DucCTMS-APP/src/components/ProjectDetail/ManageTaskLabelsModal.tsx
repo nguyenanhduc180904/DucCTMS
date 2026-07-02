@@ -108,6 +108,7 @@ const ManageTaskLabelsModal: React.FC<ManageTaskLabelsModalProps> = ({
                     rowKey="id"
                     pagination={{ pageSize: 5 }}
                     size="small"
+                    locale={{ emptyText: 'Không tìm thấy nhãn nào' }}
                 />
             )}
         </Modal>

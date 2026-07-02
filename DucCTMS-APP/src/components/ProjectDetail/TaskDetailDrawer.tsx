@@ -150,7 +150,12 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
             MEDIUM: 'orange',
             LOW: 'blue'
         };
-        return <Tag color={colorMap[priority] || 'default'}>{priority}</Tag>;
+        const textMap: Record<string, string> = {
+            HIGH: 'Cao',
+            MEDIUM: 'Trung bình',
+            LOW: 'Thấp'
+        };
+        return <Tag color={colorMap[priority] || 'default'}>{textMap[priority] || priority}</Tag>;
     };
 
     return (
@@ -338,6 +343,7 @@ const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                                             style={{ marginTop: 24 }}
                                             itemLayout="horizontal"
                                             dataSource={task.comments || []}
+                                            locale={{ emptyText: 'Chưa có bình luận nào' }}
                                             renderItem={(item) => (
                                                 <List.Item
                                                     actions={[

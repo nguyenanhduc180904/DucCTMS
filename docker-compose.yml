@@ -29,6 +29,8 @@ services:
       - DB_PASS=111111
     depends_on:
       - db
+    volumes:
+      - ./DucCTMS-API/uploads:/app/uploads
     restart: unless-stopped
 
   app:

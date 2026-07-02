@@ -72,6 +72,7 @@ public class WorkspaceService {
                 .workspace(savedWorkspace)
                 .user(user)
                 .role(WorkspaceMember.Role.valueOf("OWNER"))
+                .joinedAt(OffsetDateTime.now())
                 .build();
 
         memberRepository.save(member);
