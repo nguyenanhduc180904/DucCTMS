@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: ducctms-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 111111
+      POSTGRES_DB: doAnTotNghiep
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./DucCTMS-API
+      dockerfile: Dockerfile
+    container_name: ducctms-api
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=doAnTotNghiep
+      - DB_USER=postgres
+      - DB_PASS=111111
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ./DucCTMS-APP
+      dockerfile: Dockerfile
+    container_name: ducctms-app
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

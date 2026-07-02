@@ -2,9 +2,9 @@ server:
   port: 8080
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/doAnTotNghiep
-    username: postgres
-    password: 111111
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:doAnTotNghiep}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:111111}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
