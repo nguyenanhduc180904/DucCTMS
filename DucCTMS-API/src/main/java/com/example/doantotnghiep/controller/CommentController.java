@@ -11,7 +11,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/projects/{projectId}/tasks/{taskId}/comments")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class CommentController {
 
     private final CommentService commentService;
